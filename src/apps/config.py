@@ -1,6 +1,4 @@
-from typing import Any
-
-from pydantic import Field, PostgresDsn, ValidationError, field_validator
+from pydantic import Field, PostgresDsn, computed_field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 ENV_FILES = ("dev.env", "prod.env")
@@ -22,26 +20,21 @@ class DBSettings(BaseSettings):
         False,
         description="Нужно ли выводить диагностические сообщения",
     )
-    DSN: str | None = None
 
-    @field_validator("DSN")
-    @classmethod
-    def assemble_postgres_dsn(cls, v: str | dict[str, Any]) -> str | None:
-        if isinstance(v, str):
-            return v
-        try:
-            return str(
-                PostgresDsn.build(
-                    scheme=v.get("DRIVERNAME", ""),
-                    username=v.get("USERNAME"),
-                    password=v.get("PASSWORD"),
-                    host=v.get("HOST"),
-                    port=v.get("PORT"),
-                    path=f"{v.get('DATABASE')}",
-                )
+    @computed_field
+    @property
+    def DSN(self) -> str:  # noqa: N802
+        """Вычисляемое поле для DSN."""
+        return str(
+            PostgresDsn.build(
+                scheme=self.DRIVERNAME,
+                username=self.USER,
+                password=self.PASSWORD,
+                host=self.HOST,
+                port=self.PORT,
+                path=self.DATABASE,
             )
-        except ValidationError:
-            return None
+        )
 
     model_config = SettingsConfigDict(
         case_sensitive=True,

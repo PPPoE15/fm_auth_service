@@ -1,11 +1,11 @@
 from datetime import datetime
 
-from sqlalchemy import DateTime
 from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy.types import UUID, String
 
 from apps import apps_types
 from apps.db_models.base import AsyncBase
+from apps.db_models.utils.tz_type import TZDateTime
 
 
 class User(AsyncBase):
@@ -32,6 +32,6 @@ class User(AsyncBase):
         nullable=True,
     )
     created_date: Mapped[datetime] = mapped_column(
-        DateTime,
+        TZDateTime,
         doc="Дата создания записи объекта",
     )
