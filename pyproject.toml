@@ -138,6 +138,7 @@ uvicorn = "^0.37.0"
 argon2-cffi = "^25.1.0"
 types-passlib = "^1.7.7.20250602"
 passlib = "^1.7.4"
+python-multipart = "^0.0.20"
 
 
 [tool.poetry.group.dev.dependencies]

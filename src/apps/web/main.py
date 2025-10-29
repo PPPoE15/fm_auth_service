@@ -3,8 +3,8 @@ from types import TracebackType
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from apps.config import app_settings
 from apps.web.bootstrap import logger
-from apps.web.config import app_settings
 
 
 class LifespanEvent:

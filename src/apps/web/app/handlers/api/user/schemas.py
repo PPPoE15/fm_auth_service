@@ -1,4 +1,4 @@
-from pydantic import Field
+from pydantic import BaseModel, Field
 
 from apps import apps_types
 from apps.utils.schemas import Base
@@ -18,4 +18,16 @@ class CreateUserSchema(Base):
     )
     email: apps_types.Email | None = Field(
         description="Email пользователя",
+    )
+
+
+class TokenSchema(BaseModel):
+    """JWT-токен"""
+
+    access_token: str = Field(title="JWT-токен", description="JWT-токен для доступа к API")
+    token_type: str = Field(
+        title="Тип JWT-токена",
+        description="Тип JWT-токена для доступа к API",
+        max_length=256,
+        examples=["bearer"],
     )

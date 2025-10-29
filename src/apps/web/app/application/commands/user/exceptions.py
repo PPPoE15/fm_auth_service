@@ -1,4 +1,4 @@
-from apps.web.app.utils.exceptions import BaseBadRequestError, BaseNotFoundError
+from apps.web.app.utils.exceptions import BaseBadRequestError, BaseNotFoundError, BaseUnauthorizedError
 
 
 class UserAlreadyExistsError(BaseNotFoundError):
@@ -7,3 +7,7 @@ class UserAlreadyExistsError(BaseNotFoundError):
 
 class PasswordConfirmationError(BaseBadRequestError):
     """Пароли не совпадают"""
+
+
+class UnauthorizedError(BaseUnauthorizedError):
+    """Ошибка авторизации."""
