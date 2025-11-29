@@ -86,7 +86,7 @@ class LogConfig(BaseSettings):
     """Конфигуратор логера"""
 
     LOG_FORMAT: str = "%(levelname)s | %(asctime)s | %(pathname)s | %(lineno)s | %(message)s"
-    LOG_LEVEL: str = "ERROR"
+    LOG_LEVEL: str = "DEBUG"
 
     version: int = 1
     disable_existing_loggers: bool = False

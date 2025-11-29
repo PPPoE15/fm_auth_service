@@ -1,7 +1,4 @@
-from typing import Annotated
-
-from fastapi import APIRouter, Depends
-from fastapi.security import OAuth2PasswordRequestForm
+from fastapi import APIRouter
 
 from apps import apps_types
 from apps.config import app_settings
@@ -38,7 +35,7 @@ async def create_user(
     "/token",
 )
 async def token_route_handler(
-    form_data: Annotated[OAuth2PasswordRequestForm, Depends()],
+    form_data: schemas.AuthorizationSchema,
 ) -> schemas.TokenSchema:
     """
     JWT-токен пользователя.
@@ -47,7 +44,7 @@ async def token_route_handler(
         form_data: форма аутентификации пользователя.
     """
     command_handler = deps.build_user_auth_command_handler()
-    access_token = await command_handler.handle(form_data.username, form_data.password)
+    access_token = await command_handler.handle(form_data.login, form_data.password)
     return schemas.TokenSchema(
         access_token=access_token,
         token_type=app_settings.TOKEN_TYPE,

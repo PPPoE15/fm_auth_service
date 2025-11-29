@@ -5,7 +5,7 @@ from apps.utils.schemas import Base
 
 
 class CreateUserSchema(Base):
-    """Схема данных для создания пол"""
+    """Схема данных для создания пользователя"""
 
     login: apps_types.UserLogin = Field(
         description="Имя пользователя",
@@ -18,6 +18,17 @@ class CreateUserSchema(Base):
     )
     email: apps_types.Email | None = Field(
         description="Email пользователя",
+    )
+
+
+class AuthorizationSchema(Base):
+    """Схема данных для авторизации"""
+
+    login: apps_types.UserLogin | apps_types.Email = Field(
+        description="Имя пользователя или e-mail",
+    )
+    password: apps_types.Password = Field(
+        description="Пароль",
     )
 
 

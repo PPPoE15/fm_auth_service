@@ -1,6 +1,7 @@
 from apps import apps_types
 from apps.web.app.aggregators.models import User
 from apps.web.app.utils.datetime_tz import aware_now
+from apps.web.logger import get_logger
 from apps.web.security import hash_password
 
 from . import exceptions
@@ -21,6 +22,7 @@ class CreateUserCommandHandler:
             unit_of_work: Объект шаблона Единица работы.
         """
         self._uow = unit_of_work
+        self._logger = get_logger()
 
     async def handle(
         self,
@@ -56,4 +58,6 @@ class CreateUserCommandHandler:
             )
             await uow.user_repo.create(user_agg)
             await uow.commit()
+            msg = f"Зарегистрирован пользователь {user_agg.login}"
+        self._logger.info(msg)
         return user_agg.uid

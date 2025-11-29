@@ -6,6 +6,7 @@ import jwt
 from apps import apps_types
 from apps.web.app.aggregators.models import User
 from apps.web.app.utils.datetime_tz import aware_now
+from apps.web.logger import get_logger
 from apps.web.security import verify_password
 
 from .exceptions import UnauthorizedError
@@ -35,6 +36,7 @@ class AuthenticateCommandHandler:
         self._private_key = private_key
         self._token_expire_minutes = token_expire_minutes
         self._signing_algorithm = signing_algorithm
+        self._logger = get_logger()
 
     async def handle(
         self,
@@ -72,7 +74,8 @@ class AuthenticateCommandHandler:
             "login": user.login,
             "exp": expire,
         }
-
+        msg = f"Авторизован пользователь login: {user.login}"
+        self._logger.info(msg)
         return jwt.encode(
             payload=payload,
             key="secret_key",
