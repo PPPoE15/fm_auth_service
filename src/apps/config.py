@@ -5,6 +5,43 @@ ENV_FILES = ("dev.env", "prod.env")
 SECRETS_DIR = "/run/secrets"
 
 
+class AppSettings(BaseSettings):
+    """Конфигуратор настроек для FastAPI."""
+
+    SERVICE_NAME: str = Field(
+        "fm_auth_service",
+        description="Наименование сервиса.",
+    )
+    HEALTHCHECK_MODE: bool = Field(
+        False,
+        description="Для проверки сборки.",
+    )
+
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = Field(
+        30,
+        description="Время жизни токена.",
+    )
+    PRIVATE_KEY_PATH: str = Field(
+        ".ssh/id_rsa",
+        description="Расположение приватного ключа.",
+    )
+    TOKEN_SIGNING_ALGORITHM: str = Field(
+        "RS256",
+        description="Алгоритм подписи JWT-токена.",
+    )
+    TOKEN_TYPE: str = Field(
+        "bearer",
+        description="Тип JWT-токена.",
+    )
+
+    model_config = SettingsConfigDict(
+        case_sensitive=True,
+        secrets_dir=SECRETS_DIR,
+        env_file=ENV_FILES,
+        extra="ignore",
+    )
+
+
 class DBSettings(BaseSettings):
     """Конфигуратор настроек для БД."""
 
@@ -49,7 +86,7 @@ class LogConfig(BaseSettings):
     """Конфигуратор логера"""
 
     LOG_FORMAT: str = "%(levelname)s | %(asctime)s | %(pathname)s | %(lineno)s | %(message)s"
-    LOG_LEVEL: str = "ERROR"
+    LOG_LEVEL: str = "DEBUG"
 
     version: int = 1
     disable_existing_loggers: bool = False
@@ -74,3 +111,4 @@ class LogConfig(BaseSettings):
 
 db_settings = DBSettings()
 log_settings = LogConfig()
+app_settings = AppSettings()

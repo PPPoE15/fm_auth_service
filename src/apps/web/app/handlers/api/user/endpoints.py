@@ -1,6 +1,7 @@
 from fastapi import APIRouter
 
 from apps import apps_types
+from apps.config import app_settings
 
 from . import deps, schemas
 
@@ -27,4 +28,24 @@ async def create_user(
         password=item_in.password,
         password_confirmation=item_in.password_confirmation,
         email=item_in.email,
+    )
+
+
+@router.post(
+    "/token",
+)
+async def token_route_handler(
+    form_data: schemas.AuthorizationSchema,
+) -> schemas.TokenSchema:
+    """
+    JWT-токен пользователя.
+
+    Args:
+        form_data: форма аутентификации пользователя.
+    """
+    command_handler = deps.build_user_auth_command_handler()
+    access_token = await command_handler.handle(form_data.login, form_data.password)
+    return schemas.TokenSchema(
+        access_token=access_token,
+        token_type=app_settings.TOKEN_TYPE,
     )

@@ -4,6 +4,8 @@ from pydantic import Field
 from starlette import status
 from starlette.exceptions import HTTPException
 
+from apps.web.app.utils.exceptions import BaseUnauthorizedError
+
 from . import base
 
 
@@ -51,7 +53,7 @@ def setup_unauthorized_exception_handlers(app: FastAPI) -> None:
         app: Приложение FastAPI.
     """
 
-    @app.exception_handler(status.HTTP_401_UNAUTHORIZED)
+    @app.exception_handler(BaseUnauthorizedError)
     async def unauthorized_exception_handler(request: Request, exc: HTTPException) -> JSONResponse:
         instance = request.url.path
         return UnauthorizedErrorResponseSchema(instance=instance, detail=exc.detail).json_response()

@@ -28,3 +28,7 @@ class BaseForbiddenError(BaseError):
 
 class BaseBadRequestError(BaseError):
     """Базовая ошибка запроса (код 400)."""
+
+
+class BaseUnauthorizedError(BaseError):
+    """Базовая ошибка авторизации (код 401)."""
