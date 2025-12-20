@@ -4,7 +4,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from apps.config import app_settings
-from apps.web.bootstrap import logger
+from apps.web.bootstrap import exception_handlers, logger
 
 
 class LifespanEvent:
@@ -52,7 +52,7 @@ def build_app() -> FastAPI:
     if not app_settings.HEALTHCHECK_MODE:
         from apps.web.router import main_router  # noqa: PLC0415
 
-        fastapi_app.include_router(main_router, prefix="/auth")
+        fastapi_app.include_router(main_router)
         fastapi_app.add_middleware(
             CORSMiddleware,
             allow_origins=[
@@ -65,6 +65,7 @@ def build_app() -> FastAPI:
             allow_methods=["*"],
             allow_headers=["*"],
         )
+        exception_handlers.setup(fastapi_app)
 
     return fastapi_app
 

@@ -4,7 +4,7 @@ from pydantic import Field
 from starlette import status
 from starlette.exceptions import HTTPException
 
-from apps.web.app.utils.exceptions import BaseUnauthorizedError
+from apps.web.app.utils.exceptions import BaseError, BaseUnauthorizedError
 
 from . import base
 
@@ -39,7 +39,7 @@ class UnauthorizedErrorResponseSchema(base.BaseErrorResponseSchema):
     )
     code: str = Field(
         title="Внутренний код ошибки",
-        description="Числобуквенный код ошибки в рамках продута FM",
+        description="Числобуквенный код ошибки в рамках продукта FM",
         examples=["FM-401000"],
         default="FM-401000",
     )
@@ -54,6 +54,6 @@ def setup_unauthorized_exception_handlers(app: FastAPI) -> None:
     """
 
     @app.exception_handler(BaseUnauthorizedError)
-    async def unauthorized_exception_handler(request: Request, exc: HTTPException) -> JSONResponse:
+    async def unauthorized_exception_handler(request: Request, exc: BaseError) -> JSONResponse:
         instance = request.url.path
-        return UnauthorizedErrorResponseSchema(instance=instance, detail=exc.detail).json_response()
+        return UnauthorizedErrorResponseSchema(instance=instance, detail=exc.msg).json_response()
