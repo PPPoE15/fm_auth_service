@@ -15,7 +15,7 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     - name: Build the Docker image
-      run: docker build . --file Dockerfile --tag ${{ secrets.DOCKERHUB_USERNAME }}/fm_auth_service:${{ github.sha }}
+      run: docker build . --target master --file Dockerfile --tag ${{ secrets.DOCKERHUB_USERNAME }}/${{ github.event.repository.name }}:${{ github.sha }}
 
     - name: Log in to Docker Hub
       uses: docker/login-action@v2
@@ -25,5 +25,5 @@ jobs:
     
     - name: Push Docker image
       run: |
-        docker tag ${{ secrets.DOCKERHUB_USERNAME }}/fm_auth_service:${{ github.sha }} ${{ secrets.DOCKERHUB_USERNAME }}/fm_auth_service:master
-        docker push ${{ secrets.DOCKERHUB_USERNAME }}/fm_auth_service:master
+        docker tag ${{ secrets.DOCKERHUB_USERNAME }}/${{ github.event.repository.name }}:${{ github.sha }} ${{ secrets.DOCKERHUB_USERNAME }}/${{ github.event.repository.name }}:master
+        docker push ${{ secrets.DOCKERHUB_USERNAME }}/${{ github.event.repository.name }}:master

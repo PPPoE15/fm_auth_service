@@ -1,0 +1,29 @@
+name: dev CI/CD Pipeline
+
+on:
+  push:
+    branches: [dev]
+
+jobs:
+  # Job 1: Вызываем сборку
+  build:
+    uses: ./.github/workflows/build.yml  # ← Вызов локального workflow
+    with:
+      service_name: "service1"
+      dockerfile_path: "./service1/Dockerfile"
+
+  # Job 2: Тестирование (зависит от сборки)
+  test-service1:
+    needs: build-service1
+    uses: ./.github/workflows/test.yml
+    with:
+      image_tag: ${{ needs.build-service1.outputs.image_tag }}
+      service_name: "service1"
+
+  # Job 3: Деплой (зависит от тестирования)
+  deploy-service1:
+    needs: test-service1
+    uses: ./.github/workflows/deploy.yml
+    with:
+      image_tag: ${{ needs.build-service1.outputs.image_tag }}
+      environment: "staging"
