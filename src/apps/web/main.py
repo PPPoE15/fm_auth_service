@@ -4,7 +4,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from apps.config import app_settings
-from apps.web.bootstrap import logger
+from apps.web.bootstrap import exception_handlers, logger
 
 
 class LifespanEvent:
@@ -65,6 +65,7 @@ def build_app() -> FastAPI:
             allow_methods=["*"],
             allow_headers=["*"],
         )
+        exception_handlers.setup(fastapi_app)
 
     return fastapi_app
 
