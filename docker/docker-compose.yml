@@ -1,0 +1,79 @@
+version: '3.1'
+
+volumes:
+  postgres_data:
+
+services:
+
+# --- apps ---
+
+  web:
+    image: fm_auth_service:testing
+    platform: linux/amd64
+    depends_on:
+      _init-migrations:
+        condition: service_completed_successfully
+    env_file:
+      - ../template.env
+    volumes:
+      - ../src/apps:/opt/fm_auth_service/apps
+    ports:
+      - 8000:8000
+      - 5678:5678  # для remote debug
+    command: python -m debugpy --listen 0.0.0.0:5678 -m uvicorn apps.web.main:app --host "0.0.0.0" --port 8000 --reload
+
+
+# --- tests ---
+
+  downgrade-migrations-tests:
+    image: fm_auth_service:testing
+    depends_on:
+      _init-migrations:
+        condition: service_completed_successfully
+    env_file:
+      - ../template.env
+    volumes:
+      - ../src:/opt/fm_auth_service/
+    command: alembic downgrade base
+
+# ---
+
+  _init-migrations:
+    image: fm_auth_service:testing
+    env_file:
+      - ../template.env
+    volumes:
+      - ../src/:/opt/fm_auth_service
+    depends_on:
+      _build-app:
+        condition: service_completed_successfully
+      db:
+        condition: service_healthy
+    command: alembic upgrade head
+
+  _build-app:
+    build:
+      context: ../
+      dockerfile: docker/Dockerfile
+      target: "development-env"
+    image: fm_auth_service:testing
+    platform: linux/amd64
+    command: echo "ok!"
+
+  # ---
+
+  db:
+    image: postgres:16.0
+    healthcheck:
+      test: ["CMD", "pg_isready"]
+      timeout: 0.5s
+      interval: 0.5s
+      retries: 100
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=password
+      - POSTGRES_DB=fm_auth_service
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
