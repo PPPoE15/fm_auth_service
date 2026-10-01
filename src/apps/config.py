@@ -58,7 +58,7 @@ class DBSettings(BaseSettings):
         description="Нужно ли выводить диагностические сообщения",
     )
 
-    @computed_field
+    @computed_field  # type: ignore[prop-decorator]
     @property
     def DSN(self) -> str:  # noqa: N802
         """Вычисляемое поле для DSN."""
