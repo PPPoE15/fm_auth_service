@@ -23,7 +23,11 @@ class AppSettings(BaseSettings):
     )
     PRIVATE_KEY_PATH: str = Field(
         ".ssh/id_rsa",
-        description="Расположение приватного ключа.",
+        description="Расположение приватного ключа подписи JWT (PEM).",
+    )
+    PUBLIC_KEY_PATH: str = Field(
+        ".ssh/id_rsa.pub",
+        description="Расположение публичного ключа для проверки подписи JWT (PEM).",
     )
     TOKEN_SIGNING_ALGORITHM: str = Field(
         "RS256",

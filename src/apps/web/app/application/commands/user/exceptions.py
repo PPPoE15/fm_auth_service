@@ -1,8 +1,10 @@
-from apps.web.app.utils.exceptions import BaseBadRequestError, BaseNotFoundError, BaseUnauthorizedError
+from apps.web.app.utils.exceptions import BaseBadRequestError, BaseConflictError, BaseUnauthorizedError
 
 
-class UserAlreadyExistsError(BaseNotFoundError):
+class UserAlreadyExistsError(BaseConflictError):
     """Пользователь уже существует"""
+
+    code = "FM-409001"
 
 
 class PasswordConfirmationError(BaseBadRequestError):
