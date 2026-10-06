@@ -480,3 +480,14 @@ def test_validation_error_with_lone_surrogate_in_value(client: TestClient, field
 
     assert response.status_code == 422
     assert field in _validation_fields(response)
+
+
+def test_registration_rejects_email_longer_than_254_after_lowercasing(client: TestClient) -> None:
+    email = "a" * 60 + "@" + "İ" * 190 + ".ru"
+    assert len(email) == 254
+    assert len(email.lower()) > 254
+
+    response = _register(client, email=email)
+
+    assert response.status_code == 422
+    assert "email" in _validation_fields(response)

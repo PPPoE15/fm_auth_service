@@ -19,6 +19,22 @@ def _reject_control_chars(value: str) -> str:
     return value
 
 
+_EMAIL_MAX_LENGTH = 254
+
+
+def _check_email_length(value: str) -> str:
+    """
+    Проверить длину email после нормализации.
+
+    max_length в StringConstraints проверяется до to_lower, а lower() может удлинить строку
+    (например, «İ» → «i̇», два символа), и email не влез бы в колонку varchar(254).
+    """
+    if len(value) > _EMAIL_MAX_LENGTH:
+        msg = f"Email не должен быть длиннее {_EMAIL_MAX_LENGTH} символов"
+        raise ValueError(msg)
+    return value
+
+
 # Ограничения полей — по contracts/auth.openapi.yaml (UserName, Email, Password).
 # «Не только пробелы» обеспечивается обрезкой пробелов до проверки min_length.
 UserNameField = Annotated[
@@ -32,10 +48,11 @@ EmailField = Annotated[
         strip_whitespace=True,
         to_lower=True,
         min_length=3,
-        max_length=254,
+        max_length=_EMAIL_MAX_LENGTH,
         pattern=r"^[^@\s]+@[^@\s]+\.[^@\s]+$",
     ),
     AfterValidator(_reject_control_chars),
+    AfterValidator(_check_email_length),
 ]
 PasswordField = Annotated[apps_types.Password, StringConstraints(min_length=8, max_length=128)]
 
