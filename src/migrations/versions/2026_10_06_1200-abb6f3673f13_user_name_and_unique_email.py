@@ -1,6 +1,6 @@
 """user name and unique email
 
-Пользователь по контракту auth.openapi.yaml (FM-001.7): login заменён на name (как обращаться,
+Пользователь по контракту auth.openapi.yaml (FM-15): login заменён на name (как обращаться,
 не уникально), email обязателен и уникален. Пользователей в БД нет, поэтому данные не
 переносятся: если найдутся пользователи без email, миграция остановится с понятной ошибкой.
 
@@ -24,12 +24,12 @@ def upgrade() -> None:
     users_without_email = op.get_bind().scalar(sa.text("SELECT count(*) FROM users WHERE email IS NULL"))
     if users_without_email:
         msg = (
-            f"В таблице users {users_without_email} пользователей без email: после FM-001.7 email обязателен. "
+            f"В таблице users {users_without_email} пользователей без email: после FM-15 email обязателен. "
             "Заполните email или удалите этих пользователей и повторите миграцию."
         )
         raise RuntimeError(msg)
 
-    # NOTE(FM-001.7): существующие email не приводятся к нижнему регистру и не проверяются на дубликаты без
+    # NOTE(FM-15): существующие email не приводятся к нижнему регистру и не проверяются на дубликаты без
     # учёта регистра, login длиннее 64 символов уронит смену типа — пользователей нет (решение в PR #11).
     op.alter_column("users", "login", new_column_name="name", type_=sa.String(length=64), existing_nullable=False)
     op.alter_column("users", "email", type_=sa.String(length=254), nullable=False, existing_nullable=True)

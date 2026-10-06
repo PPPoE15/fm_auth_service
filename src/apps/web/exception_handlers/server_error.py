@@ -53,6 +53,6 @@ def setup_server_exception_handlers(app: FastAPI) -> None:
     @app.exception_handler(status.HTTP_500_INTERNAL_SERVER_ERROR)
     async def server_exception_handler(request: Request, exc: Exception) -> JSONResponse:
         instance = request.url.path
-        # TODO(FM-001.7): detail=str(exc) отдаёт клиенту текст внутренних исключений (asyncpg, pydantic);
-        # отдавать общее сообщение, а подробности — только в лог. Существовало до FM-001.7.
+        # TODO(FM-15): detail=str(exc) отдаёт клиенту текст внутренних исключений (asyncpg, pydantic);
+        # отдавать общее сообщение, а подробности — только в лог. Существовало до FM-15.
         return ServerErrorResponseSchema(instance=instance, detail=str(exc)).json_response()

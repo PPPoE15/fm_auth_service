@@ -246,7 +246,7 @@ def test_login_returns_token_signed_with_configured_key(
 
 
 def test_login_token_keeps_login_claim_for_transaction_service(client: TestClient) -> None:
-    """fm_transaction_service до FM-001.2 требует claim login."""
+    """fm_transaction_service до FM-9 требует claim login."""
     _register(client)
 
     token = _login(client).json()["access_token"]

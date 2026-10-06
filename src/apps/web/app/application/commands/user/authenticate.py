@@ -58,7 +58,7 @@ class AuthenticateCommandHandler:
         # Для неизвестного email пароль всё равно проверяется (по фиктивному хешу), чтобы время ответа
         # не выдавало, зарегистрирован ли email.
         password_hash = user.password_hash if user else dummy_password_hash()
-        # TODO(FM-001.11): argon2 (64 МиБ, time_cost=3) считается синхронно и блокирует event loop, теперь и для
+        # TODO(FM-20): argon2 (64 МиБ, time_cost=3) считается синхронно и блокирует event loop, теперь и для
         # неизвестных email; вынести в поток (anyio.to_thread.run_sync) и добавить rate limit на /token.
         if not verify_password(password, password_hash) or user is None:
             msg = "Неверный email или пароль"
@@ -76,8 +76,8 @@ class AuthenticateCommandHandler:
         expire = aware_now() + timedelta(minutes=self._token_expire_minutes)
         payload: dict[str, Any] = {
             "sub": str(user.uid),
-            # NOTE(FM-001.7): claim login нужен только fm_transaction_service — его UserInfo требует это поле
-            # до FM-001.2. Логин теперь — email. Сам сервис авторизации читает из токена только sub.
+            # NOTE(FM-15): claim login нужен только fm_transaction_service — его UserInfo требует это поле
+            # до FM-9. Логин теперь — email. Сам сервис авторизации читает из токена только sub.
             "login": user.email,
             "exp": expire,
         }
