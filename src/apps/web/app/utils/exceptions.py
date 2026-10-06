@@ -16,7 +16,14 @@ class BaseError(Exception):
 
 
 class BaseCustomValidationError(BaseError):
-    """Базовая ошибка серверной валидации (код 422)."""
+    """
+    Базовая ошибка серверной валидации (код 400).
+
+    Attributes:
+        field: Поле запроса, не прошедшее проверку (попадает в список validation ответа).
+    """
+
+    field: str | None = None
 
 
 class BaseNotFoundError(BaseError):

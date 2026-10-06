@@ -1,5 +1,6 @@
 from apps.config import app_settings
 from apps.web.app.application.commands.user import AuthenticateCommandHandler, CreateUserCommandHandler, UserUnitOfWork
+from apps.web.app.application.queries.user import GetCurrentUserQueryHandler
 from apps.web.app.handlers.deps import async_session_factory
 from apps.web.security import load_private_key
 
@@ -17,3 +18,8 @@ def build_user_auth_command_handler() -> AuthenticateCommandHandler:
         token_expire_minutes=app_settings.ACCESS_TOKEN_EXPIRE_MINUTES,
         signing_algorithm=app_settings.TOKEN_SIGNING_ALGORITHM,
     )
+
+
+def build_current_user_query_handler() -> GetCurrentUserQueryHandler:
+    """Построить обработчик запроса текущего пользователя."""
+    return GetCurrentUserQueryHandler(unit_of_work=UserUnitOfWork(session_factory=async_session_factory))

@@ -2,7 +2,7 @@ from .simple_types import (
     Email,
     Password,
     PasswordHash,
-    UserLogin,
+    UserName,
     UserUID,
 )
 
@@ -10,6 +10,6 @@ __all__ = [
     "Email",
     "Password",
     "PasswordHash",
-    "UserLogin",
+    "UserName",
     "UserUID",
 ]

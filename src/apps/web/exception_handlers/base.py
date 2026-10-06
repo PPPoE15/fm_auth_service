@@ -81,7 +81,7 @@ class BaseErrorResponseSchema(BaseModel):
     def json_response(self) -> JSONResponse:
         """Конвертировать ошибку в JSONResponse."""
         return JSONResponse(
-            content=self.model_dump(mode="json"),
+            content=self.model_dump(mode="json", by_alias=True),
             status_code=self.status,
             headers={"Content-Type": "application/problem+json"},
         )
