@@ -26,7 +26,7 @@ class User(AsyncBase):
         String,
         doc="Хэш пароля.",
     )
-    # NOTE(FM-001.7): uq_users_email чувствителен к регистру — нижний регистр обеспечивает только HTTP-схема
+    # NOTE(FM-15): uq_users_email чувствителен к регистру — нижний регистр обеспечивает только HTTP-схема
     # (EmailField). Новый путь записи в обход неё должен нормализовать email сам (или нужен индекс по lower(email)).
     email: Mapped[apps_types.Email] = mapped_column(
         String(254),

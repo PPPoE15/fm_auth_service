@@ -6,7 +6,7 @@ from pydantic import AfterValidator, BaseModel, ConfigDict, Field, StringConstra
 from apps import apps_types
 from apps.utils.schemas import Base
 
-# NOTE(FM-001.7): по контракту отклоняются только C0 и DEL; C1 (U+0080–U+009F), U+2028/2029 и bidi-override
+# NOTE(FM-15): по контракту отклоняются только C0 и DEL; C1 (U+0080–U+009F), U+2028/2029 и bidi-override
 # (U+202E) в name проходят — при необходимости ужесточить вместе с контрактом.
 # Управляющие \t, \n, \r по краям name срезаются strip_whitespace до проверки, а не отклоняются — так
 # читается «пробелы по краям обрезаются до проверки» из контракта.
@@ -24,7 +24,7 @@ def _reject_control_chars(value: str) -> str:
 _EMAIL_MAX_LENGTH = 254
 
 
-# NOTE(FM-001.7): превышение длины после lower() отдаёт rule value_error, а не string_too_long, как обычная
+# NOTE(FM-15): превышение длины после lower() отдаёт rule value_error, а не string_too_long, как обычная
 # проверка длины; если клиенту понадобится сопоставлять по rule — бросать PydanticCustomError("string_too_long").
 def _check_email_length(value: str) -> str:
     """
@@ -46,7 +46,7 @@ UserNameField = Annotated[
     StringConstraints(strip_whitespace=True, min_length=1, max_length=64),
     AfterValidator(_reject_control_chars),
 ]
-# TODO(FM-001.7): невидимые символы (U+200B–U+200F, U+202A–U+202E, U+2060, U+FEFF) и разная Unicode-нормализация
+# TODO(FM-15): невидимые символы (U+200B–U+200F, U+202A–U+202E, U+2060, U+FEFF) и разная Unicode-нормализация
 # (NFC/NFD) дают внешне одинаковые, но разные email; отклонять их и делать NFC перед lower().
 EmailField = Annotated[
     apps_types.Email,

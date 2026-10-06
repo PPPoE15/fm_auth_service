@@ -9,7 +9,7 @@ from apps.web.app.infrastructure.db.repos.base import BaseSqlAlchemyRepo
 from . import builders
 from .interface import EmailAlreadyTakenError, UserRepoInterface
 
-# TODO(FM-001.7): конфликт определяется поиском имени ограничения в тексте ошибки; надёжнее смотреть
+# TODO(FM-15): конфликт определяется поиском имени ограничения в тексте ошибки; надёжнее смотреть
 # sqlstate 23505 и constraint_name исходной ошибки asyncpg (exc.orig.__cause__).
 _EMAIL_UNIQUE_CONSTRAINT = "uq_users_email"
 

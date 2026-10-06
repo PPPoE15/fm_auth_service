@@ -11,7 +11,7 @@ from apps.web.app.utils.exceptions import BaseCustomValidationError
 from . import base
 
 # Значения этих полей не возвращаются в ответе об ошибке валидации.
-# TODO(FM-001.7): значения лишних полей (extra_forbidden) клиенту не нужны, но возвращаются — пароль под
+# TODO(FM-15): значения лишних полей (extra_forbidden) клиенту не нужны, но возвращаются — пароль под
 # чужим ключом (например, passwordConfirmation) уйдёт в rejectedValue; для extra_forbidden отдавать None.
 SENSITIVE_FIELDS = frozenset({"password", "password_confirmation"})
 
@@ -98,7 +98,7 @@ def _rejected_value(body: Any, loc: tuple[int | str, ...]) -> str | None:  # noq
     if value is None:
         return None
     # Одиночные суррогаты (\ud800) проходят json.loads, но не кодируются в UTF-8 при отправке ответа.
-    # TODO(FM-001.7): не строки отдаются как Python repr (True, {'a': 'b'}, inf);
+    # TODO(FM-15): не строки отдаются как Python repr (True, {'a': 'b'}, inf);
     # для них использовать json.dumps(ensure_ascii=False).
     return str(value).encode("utf-8", "replace").decode("utf-8")
 
@@ -136,7 +136,7 @@ def setup_validation_exception_handlers(app: FastAPI) -> None:
             validation.append(
                 ValidationField(message=exc.msg, field=exc.field, rejectedValue=None, rule="value_error"),
             )
-        # TODO(FM-001.7): наследник без собственного code получит FM-422000 при статусе 400; задать код по умолчанию
+        # TODO(FM-15): наследник без собственного code получит FM-422000 при статусе 400; задать код по умолчанию
         # FM-400000 и переиспользовать BaseErrorResponseSchema.from_error вместо ручной подстановки code.
         response = ValidationErrorResponseSchema(
             type="/help-center?helpSectionId=errors#400",
