@@ -6,6 +6,7 @@ import jwt
 import pytest
 from fastapi import Depends, FastAPI
 from fastapi.testclient import TestClient
+from httpx import Response
 
 from apps import apps_types
 from apps.config import app_settings
@@ -38,14 +39,14 @@ def client(app: FastAPI) -> Iterator[TestClient]:
         yield test_client
 
 
-def _register(client: TestClient, login: str = LOGIN, password: str = PASSWORD) -> Any:
+def _register(client: TestClient, login: str = LOGIN, password: str = PASSWORD) -> Response:
     return client.post(
         "/auth/registration",
         json={"login": login, "password": password, "password_confirmation": password, "email": None},
     )
 
 
-def _login(client: TestClient, login: str = LOGIN, password: str = PASSWORD) -> Any:
+def _login(client: TestClient, login: str = LOGIN, password: str = PASSWORD) -> Response:
     return client.post("/auth/token", json={"login": login, "password": password})
 
 
@@ -59,7 +60,7 @@ def _payload(**overrides: Any) -> dict[str, Any]:
     return {key: value for key, value in payload.items() if value is not None}
 
 
-def _get_me(client: TestClient, token: str) -> Any:
+def _get_me(client: TestClient, token: str) -> Response:
     return client.get("/test/me", headers={"Authorization": f"Bearer {token}"})
 
 
@@ -117,7 +118,7 @@ def test_login_returns_token_signed_with_configured_key(
     body = response.json()
     assert body["token_type"] == "bearer"
     assert jwt.get_unverified_header(body["access_token"])["alg"] == "RS256"
-    _, public_pem = signing_keys
+    public_pem = signing_keys[1]
     payload = jwt.decode(body["access_token"], key=public_pem, algorithms=["RS256"])
     [user] = users_storage.values()
     assert payload["sub"] == str(user.uid)
@@ -168,7 +169,7 @@ def test_issued_token_is_accepted(client: TestClient, users_storage: dict[apps_t
 
 
 def test_token_signed_with_another_key_is_rejected(client: TestClient) -> None:
-    foreign_private_pem, _ = generate_rsa_pem_pair()
+    foreign_private_pem = generate_rsa_pem_pair()[0]
     token = jwt.encode(_payload(), key=foreign_private_pem, algorithm="RS256")
 
     response = _get_me(client, token)
@@ -190,7 +191,7 @@ def test_unsigned_token_is_rejected(client: TestClient) -> None:
 
 
 def test_expired_token_is_rejected(client: TestClient, signing_keys: tuple[bytes, bytes]) -> None:
-    private_pem, _ = signing_keys
+    private_pem = signing_keys[0]
     token = jwt.encode(
         _payload(exp=datetime.now(tz=UTC) - timedelta(seconds=1)),
         key=private_pem,
@@ -204,7 +205,7 @@ def test_expired_token_is_rejected(client: TestClient, signing_keys: tuple[bytes
 
 
 def test_token_without_exp_is_rejected(client: TestClient, signing_keys: tuple[bytes, bytes]) -> None:
-    private_pem, _ = signing_keys
+    private_pem = signing_keys[0]
     token = jwt.encode(_payload(exp=None), key=private_pem, algorithm="RS256")
 
     assert _get_me(client, token).status_code == 401

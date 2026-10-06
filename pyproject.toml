@@ -96,7 +96,7 @@ max-returns=6
 max-statements=50
 
 [tool.ruff.lint.per-file-ignores]
-"src/tests/*" = ["S101", "D100", "ARG", "FBT", "SLF001"]
+"tests/*" = ["S101", "D1", "ARG", "FBT", "SLF001", "PLR2004", "S105", "S106"]
 "src/migrations/*" = ["D103", "INP001", "D205"]
 
 [tool.mypy]
