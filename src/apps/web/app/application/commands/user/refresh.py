@@ -1,0 +1,50 @@
+from apps.web.app.utils.datetime_tz import aware_now
+from apps.web.logger import get_logger
+from apps.web.security import hash_refresh_token
+
+from .exceptions import InvalidRefreshTokenError
+from .tokens import TokenIssuer, TokenPair
+from .uow import AbstractUserUnitOfWork
+
+
+class RefreshTokenCommandHandler:
+    """Обработчик команды обновления пары токенов по refresh-токену (с ротацией)."""
+
+    def __init__(
+        self,
+        unit_of_work: AbstractUserUnitOfWork,
+        token_issuer: TokenIssuer,
+    ) -> None:
+        """
+        Конструктор обработчика обновления токенов.
+
+        Args:
+            unit_of_work: Объект шаблона Единица работы.
+            token_issuer: Выдача пары токенов.
+        """
+        self._uow = unit_of_work
+        self._token_issuer = token_issuer
+        self._logger = get_logger()
+
+    async def handle(self, refresh_token: str) -> TokenPair:
+        """
+        Обменять действующий refresh-токен на новую пару; переданный токен отзывается.
+
+        Args:
+            refresh_token: Открытое значение refresh-токена.
+
+        Raises:
+            InvalidRefreshTokenError: Если токен неизвестен, истёк, отозван или его пользователя больше нет.
+        """
+        msg = "Сессия истекла, войдите снова"
+        async with self._uow as uow:
+            used_token = await uow.refresh_token_repo.revoke_active(hash_refresh_token(refresh_token), aware_now())
+            if used_token is None:
+                raise InvalidRefreshTokenError(msg)
+            user = await uow.user_repo.get_by_uid(used_token.user_uid)
+            if user is None:
+                raise InvalidRefreshTokenError(msg)
+            token_pair = await self._token_issuer.issue(uow, user)
+            await uow.commit()
+        self._logger.info("Обновлена сессия пользователя %s", user.uid)
+        return token_pair

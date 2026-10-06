@@ -1,6 +1,8 @@
 import os
+from datetime import datetime
 from pathlib import Path
 from typing import Any, Self
+from uuid import UUID
 
 import pytest
 from cryptography.hazmat.primitives import serialization
@@ -18,9 +20,12 @@ for _name, _value in {
 
 from apps import apps_types  # noqa: E402
 from apps.config import app_settings  # noqa: E402
-from apps.web.app.aggregators.models import User  # noqa: E402
+from apps.web.app.aggregators.models import RefreshToken, User  # noqa: E402
 from apps.web.app.application.commands.user.uow import AbstractUserUnitOfWork  # noqa: E402
+from apps.web.app.infrastructure.db.repos.refresh_tokens import RefreshTokenRepoInterface  # noqa: E402
 from apps.web.app.infrastructure.db.repos.users import EmailAlreadyTakenError, UserRepoInterface  # noqa: E402
+
+RefreshTokensStorage = dict[UUID, RefreshToken]
 
 
 def generate_rsa_pem_pair() -> tuple[bytes, bytes]:
@@ -87,15 +92,44 @@ class InMemoryUserRepo(UserRepoInterface):
         self._storage.pop(system_user.uid, None)
 
 
+class InMemoryRefreshTokenRepo(RefreshTokenRepoInterface):
+    """Репозиторий refresh-токенов в памяти."""
+
+    def __init__(self, storage: RefreshTokensStorage) -> None:
+        self._storage = storage
+
+    async def create(self, refresh_token: RefreshToken) -> None:
+        self._storage[refresh_token.uid] = refresh_token
+
+    async def revoke_active(self, token_hash: str, now: datetime) -> RefreshToken | None:
+        for uid, token in self._storage.items():
+            if token.token_hash == token_hash and not token.revoked and token.expires_at > now:
+                self._storage[uid] = token.model_copy(update={"revoked": True})
+                return self._storage[uid]
+        return None
+
+    async def revoke(self, token_hash: str, user_uid: apps_types.UserUID) -> None:
+        for uid, token in self._storage.items():
+            if token.token_hash == token_hash and token.user_uid == user_uid:
+                self._storage[uid] = token.model_copy(update={"revoked": True})
+
+
 class InMemoryUserUnitOfWork(AbstractUserUnitOfWork):
     """Единица работы поверх общего хранилища в памяти (изменения видны сразу)."""
 
-    def __init__(self, storage: dict[apps_types.UserUID, User], **_: Any) -> None:
+    def __init__(
+        self,
+        storage: dict[apps_types.UserUID, User],
+        refresh_tokens_storage: RefreshTokensStorage | None = None,
+        **_: Any,
+    ) -> None:
         self._storage = storage
+        self._refresh_tokens_storage = {} if refresh_tokens_storage is None else refresh_tokens_storage
         self.committed = False
 
     async def __aenter__(self) -> Self:
         self.user_repo = InMemoryUserRepo(self._storage)
+        self.refresh_token_repo = InMemoryRefreshTokenRepo(self._refresh_tokens_storage)
         return self
 
     async def rollback(self) -> None:
@@ -112,6 +146,15 @@ def users_storage() -> dict[apps_types.UserUID, User]:
 
 
 @pytest.fixture
-def uow(users_storage: dict[apps_types.UserUID, User]) -> InMemoryUserUnitOfWork:
+def refresh_tokens_storage() -> RefreshTokensStorage:
+    """Хранилище refresh-токенов одного теста."""
+    return {}
+
+
+@pytest.fixture
+def uow(
+    users_storage: dict[apps_types.UserUID, User],
+    refresh_tokens_storage: RefreshTokensStorage,
+) -> InMemoryUserUnitOfWork:
     """Единица работы в памяти."""
-    return InMemoryUserUnitOfWork(users_storage)
+    return InMemoryUserUnitOfWork(users_storage, refresh_tokens_storage)

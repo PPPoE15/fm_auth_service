@@ -19,7 +19,11 @@ class AppSettings(BaseSettings):
 
     ACCESS_TOKEN_EXPIRE_MINUTES: int = Field(
         30,
-        description="Время жизни токена.",
+        description="Время жизни access-токена в минутах.",
+    )
+    REFRESH_TOKEN_EXPIRE_DAYS: int = Field(
+        30,
+        description="Время жизни refresh-токена в днях.",
     )
     PRIVATE_KEY_PATH: str = Field(
         f"{SECRETS_DIR}/jwt_private_key",
