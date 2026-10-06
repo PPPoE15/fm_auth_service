@@ -11,6 +11,8 @@ from . import builders
 from .interface import RefreshTokenRepoInterface
 
 
+# TODO(FM-16): отозванные и истёкшие строки не удаляются — каждый вход и refresh добавляет строку; нужна
+# периодическая очистка (и индекс по expires_at). Сборка UPDATE в revoke_active/revoke дублируется.
 class RefreshTokenRepo(RefreshTokenRepoInterface, BaseSqlAlchemyRepo):
     """Репозиторий refresh-токенов."""
 

@@ -52,6 +52,8 @@ class AuthenticateCommandHandler:
             msg = "Неверный email или пароль"
             raise InvalidCredentialsError(msg)
 
+        # TODO(FM-16): если пользователя удалят во время verify_password, вставка refresh-токена нарушит FK
+        # fk_refresh_tokens_user_uid_users и /token ответит 500; ловить IntegrityError и отвечать FM-401001.
         # Проверка пароля — вне транзакции, чтобы не держать соединение из пула на время argon2.
         async with self._uow as uow:
             token_pair = await self._token_issuer.issue(uow, user)

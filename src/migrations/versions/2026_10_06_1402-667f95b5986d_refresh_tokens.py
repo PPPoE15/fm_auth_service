@@ -26,6 +26,7 @@ def upgrade() -> None:
         sa.Column("user_uid", sa.UUID(), nullable=False),
         sa.Column("token_hash", sa.String(length=64), nullable=False),
         sa.Column("expires_at", sa.DateTime(), nullable=False),
+        # NOTE(FM-16): значение по умолчанию есть только в ORM; вставка в обход ORM должна передавать revoked явно.
         sa.Column("revoked", sa.Boolean(), nullable=False),
         sa.Column("created_date", sa.DateTime(), nullable=False),
         sa.ForeignKeyConstraint(

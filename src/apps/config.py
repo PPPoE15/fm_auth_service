@@ -17,6 +17,8 @@ class AppSettings(BaseSettings):
         description="Для проверки сборки.",
     )
 
+    # TODO(FM-16): нет нижней границы (ge=1): при 0 expires_in не проходит TokenSchema и /token отвечает 500,
+    # а при REFRESH_TOKEN_EXPIRE_DAYS <= 0 любой refresh сразу недействителен.
     ACCESS_TOKEN_EXPIRE_MINUTES: int = Field(
         30,
         description="Время жизни access-токена в минутах.",
