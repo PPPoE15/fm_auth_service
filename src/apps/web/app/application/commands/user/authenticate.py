@@ -19,7 +19,7 @@ class AuthenticateCommandHandler:
     def __init__(
         self,
         unit_of_work: AbstractUserUnitOfWork,
-        private_key: str,
+        private_key: bytes,
         token_expire_minutes: int,
         signing_algorithm: str,
     ) -> None:
@@ -28,7 +28,7 @@ class AuthenticateCommandHandler:
 
         Args:
             unit_of_work: Объект шаблона Единица работы.
-            private_key: Приватный ключ для подписания токена.
+            private_key: Приватный ключ для подписания токена (PEM).
             token_expire_minutes: Время жизни токена в минутах.
             signing_algorithm: Алгоритм подписания токена.
         """
@@ -78,7 +78,6 @@ class AuthenticateCommandHandler:
         self._logger.info(msg)
         return jwt.encode(
             payload=payload,
-            key="secret_key",
-            # key=self._private_key,
-            # algorithm=self._signing_algorithm,
+            key=self._private_key,
+            algorithm=self._signing_algorithm,
         )

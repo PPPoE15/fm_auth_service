@@ -96,7 +96,7 @@ max-returns=6
 max-statements=50
 
 [tool.ruff.lint.per-file-ignores]
-"src/tests/*" = ["S101", "D100", "ARG", "FBT", "SLF001"]
+"tests/*" = ["S101", "D1", "ARG", "FBT", "SLF001", "PLR2004", "S105", "S106"]
 "src/migrations/*" = ["D103", "INP001", "D205"]
 
 [tool.mypy]
@@ -133,7 +133,7 @@ pydantic = "^2.12.3"
 pydantic-settings = "^2.11.0"
 fastapi = "^0.119.0"
 asyncpg = "^0.30.0"
-pyjwt = "^2.10.1"
+pyjwt = {version = "^2.10.1", extras = ["crypto"]}
 uvicorn = "^0.37.0"
 argon2-cffi = "^25.1.0"
 types-passlib = "^1.7.7.20250602"
@@ -147,6 +147,7 @@ ruff = "^0.14.1"
 debugpy = "^1.8.17"
 pytest = {extras = ["pytest-asyncio"], version = "^8.4.2"}
 pytest-asyncio = "^1.2.0"
+httpx = "^0.28.1"
 
 [tool.poetry]
 package-mode = false

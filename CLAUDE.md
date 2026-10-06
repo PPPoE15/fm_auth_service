@@ -42,7 +42,7 @@ make pytest_coverage         # pytest --cov --cov-report html
 make gen_requirements
 ```
 
-Type checking / linting config lives entirely in `pyproject.toml` under `[tool.ruff]` and `[tool.mypy]`: `ruff.lint.select = ["ALL"]` with an explicit ignore list, line length 120, and mypy runs with `disallow_untyped_defs = true`. `src/tests/*` and `src/migrations/*` get relaxed per-file ignores.
+Type checking / linting config lives entirely in `pyproject.toml` under `[tool.ruff]` and `[tool.mypy]`: `ruff.lint.select = ["ALL"]` with an explicit ignore list, line length 120, and mypy runs with `disallow_untyped_defs = true`. `tests/*` and `src/migrations/*` get relaxed per-file ignores.
 
 There is no local Postgres/docker-compose in this repo (it's referenced by the Makefile but the `docker/` directory isn't checked in here) — DB connectivity commands assume the surrounding deployment repo/environment provides `docker-compose-dev-team.yaml`, etc. When developing locally without that, point `DB_*` env vars (see `template.env`) at any reachable Postgres instance.
 
@@ -62,7 +62,7 @@ apps/
     security.py              # JWT decoding (get_user_info dep), argon2/bcrypt password hashing (hash_password/verify_password)
     connectors/postgres.py    # async_engine (create_async_engine from db_settings.DSN)
     bootstrap/                # app startup: logger.setup(), exception_handlers.setup()
-    exception_handlers/        # one module per BaseError subtype -> FastAPI exception handler (400/401/403/404/422/500)
+    exception_handlers/        # RFC7807 response schema per status (400/401/403/404/409/422/500); BaseError subtypes are mapped to schemas via base.register_error_handler in bootstrap/exception_handlers.py
     telemetry/logging_tools.py  # logging filters (ReplicaID, SegmentUID, ServiceName, TraceID)
     app/
       handlers/api/<domain>/     # FastAPI routers + request/response pydantic schemas + deps.py (wires command handlers)
@@ -85,4 +85,11 @@ Request flow: router endpoint (`handlers/api/<domain>/endpoints.py`) → `deps.b
 Key separation to preserve when adding code:
 - **Aggregators** (`app/aggregators/models`) are the domain-model pydantic classes application/command code operates on. **DB models** (`apps/db_models`) are SQLAlchemy ORM classes, only touched inside `infrastructure/db/repos/*`. Repos convert between the two via `builders.py` — don't leak ORM types past the repo layer.
 - New domains follow the same four-fold shape: `handlers/api/<domain>/` (HTTP), `application/commands/<domain>/` (use cases + UoW + exceptions), `aggregators/models/` (domain model), `infrastructure/db/repos/<domain>/` (persistence). Wire the new router into `apps/web/router.py`.
-- Auth: `apps.web.security.get_user_info` is a FastAPI dependency that decodes the bearer JWT (currently **without** signature verification — `verify_signature: False` — and `AuthenticateCommandHandler._create_access_token` signs with a hardcoded `"secret_key"` rather than `PRIVATE_KEY_PATH`/`TOKEN_SIGNING_ALGORITHM` from settings; this is pre-existing hardcoded/insecure state per the git history, not a pattern to copy elsewhere).
+- Auth: JWTs are signed with RS256 (`TOKEN_SIGNING_ALGORITHM`) using the PEM private key at `PRIVATE_KEY_PATH` and carry `sub`, `login`, `exp` (lifetime `ACCESS_TOKEN_EXPIRE_MINUTES`). `apps.web.security.get_user_info` is a FastAPI dependency that verifies signature and `exp` with the PEM public key at `PUBLIC_KEY_PATH` and raises `InvalidTokenError` (401, `FM-401000`) otherwise. Key files are read via `load_private_key()` / `load_public_key()` (cached per path for the process lifetime — rotating keys requires a restart). On startup (`LifespanEvent`, skipped in `HEALTHCHECK_MODE`) `validate_signing_keys()` signs and verifies a probe token, so a missing file (`SigningKeyNotFoundError`), a non-PEM key, a key/algorithm mismatch or a mismatched pair (`SigningKeyError`) stops the service from starting instead of turning into 500s on `/token` and protected endpoints. Default paths are `/run/secrets/jwt_private_key` / `/run/secrets/jwt_public_key` (Docker secrets; wiring them into `fm_devops` compose is FM-001.3). Keys must be PEM — `ssh-keygen`'s default OpenSSH format is rejected by PyJWT. Generate a dev pair with:
+
+```bash
+openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:2048 -out jwt_private_key
+openssl pkey -in jwt_private_key -pubout -out jwt_public_key
+```
+
+For a local run outside Docker, point `PRIVATE_KEY_PATH` / `PUBLIC_KEY_PATH` at those files via environment variables (`uvicorn_up.sh` regenerates `dev.env` from `template.env`, and env vars take precedence over the env file).

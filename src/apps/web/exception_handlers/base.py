@@ -1,13 +1,18 @@
 from __future__ import annotations
 
 import logging
-from typing import Any
+from typing import TYPE_CHECKING, Any, Self, cast
 
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, ConfigDict, Field
 from starlette.status import (
     HTTP_400_BAD_REQUEST,
 )
+
+if TYPE_CHECKING:
+    from fastapi import FastAPI, Request
+
+    from apps.web.app.utils.exceptions import BaseError
 
 logger = logging.getLogger("default")
 
@@ -57,6 +62,22 @@ class BaseErrorResponseSchema(BaseModel):
         populate_by_name=True,
     )
 
+    @classmethod
+    def from_error(cls, request: Request, exc: BaseError) -> Self:
+        """
+        Построить ответ по доменной ошибке.
+
+        Собственный код ошибки (BaseError.code) заменяет код по умолчанию для HTTP-статуса.
+
+        Args:
+            request: Запрос, при обработке которого возникла ошибка.
+            exc: Доменная ошибка.
+        """
+        fields: dict[str, Any] = {"instance": request.url.path, "detail": exc.msg}
+        if exc.code:
+            fields["code"] = exc.code
+        return cls.model_validate(fields)
+
     def json_response(self) -> JSONResponse:
         """Конвертировать ошибку в JSONResponse."""
         return JSONResponse(
@@ -64,6 +85,26 @@ class BaseErrorResponseSchema(BaseModel):
             status_code=self.status,
             headers={"Content-Type": "application/problem+json"},
         )
+
+
+def register_error_handler(
+    app: FastAPI,
+    error_cls: type[BaseError],
+    schema_cls: type[BaseErrorResponseSchema],
+) -> None:
+    """
+    Зарегистрировать обработчик доменной ошибки, отвечающий по схеме RFC7807.
+
+    Args:
+        app: Приложение FastAPI.
+        error_cls: Базовый класс доменной ошибки (обрабатываются и его наследники).
+        schema_cls: Схема ответа с HTTP-статусом и кодом по умолчанию.
+    """
+
+    async def error_handler(request: Request, exc: Exception) -> JSONResponse:
+        return schema_cls.from_error(request, cast("BaseError", exc)).json_response()
+
+    app.add_exception_handler(error_cls, error_handler)
 
 
 def get_body_info(exception_body: Any | None, pointer: tuple) -> str | None:  # noqa: ANN401

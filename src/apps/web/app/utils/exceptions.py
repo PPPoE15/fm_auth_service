@@ -2,6 +2,7 @@ class BaseError(Exception):
     """Базовая ошибка."""
 
     msg: str = ""
+    code: str | None = None
 
     def __init__(self, msg: str | None = None) -> None:
         """
@@ -20,6 +21,10 @@ class BaseCustomValidationError(BaseError):
 
 class BaseNotFoundError(BaseError):
     """Базовая ошибка не найденного ресурса (код 404)."""
+
+
+class BaseConflictError(BaseError):
+    """Базовая ошибка конфликта с текущим состоянием ресурса (код 409)."""
 
 
 class BaseForbiddenError(BaseError):

@@ -1,10 +1,19 @@
 from fastapi import FastAPI
 
-from apps.web.exception_handlers.bad_request_error import setup_bad_request_exception_handlers
-from apps.web.exception_handlers.forbidden_error import setup_forbidden_exception_handlers
-from apps.web.exception_handlers.not_found_error import setup_not_found_exception_handlers
+from apps.web.app.utils.exceptions import (
+    BaseBadRequestError,
+    BaseConflictError,
+    BaseForbiddenError,
+    BaseNotFoundError,
+    BaseUnauthorizedError,
+)
+from apps.web.exception_handlers.bad_request_error import BadRequestErrorResponseSchema
+from apps.web.exception_handlers.base import register_error_handler
+from apps.web.exception_handlers.conflict_error import ConflictErrorResponseSchema
+from apps.web.exception_handlers.forbidden_error import ForbiddenErrorResponseSchema
+from apps.web.exception_handlers.not_found_error import NotFoundErrorResponseSchema
 from apps.web.exception_handlers.server_error import setup_server_exception_handlers
-from apps.web.exception_handlers.unauthorized_error import setup_unauthorized_exception_handlers
+from apps.web.exception_handlers.unauthorized_error import UnauthorizedErrorResponseSchema
 from apps.web.exception_handlers.validation_error import setup_validation_exception_handlers
 
 
@@ -16,8 +25,9 @@ def setup(app: FastAPI) -> None:
         app: Приложение FastAPI.
     """
     setup_server_exception_handlers(app)
-    setup_unauthorized_exception_handlers(app)
     setup_validation_exception_handlers(app)
-    setup_forbidden_exception_handlers(app)
-    setup_not_found_exception_handlers(app)
-    setup_bad_request_exception_handlers(app)
+    register_error_handler(app, BaseUnauthorizedError, UnauthorizedErrorResponseSchema)
+    register_error_handler(app, BaseForbiddenError, ForbiddenErrorResponseSchema)
+    register_error_handler(app, BaseNotFoundError, NotFoundErrorResponseSchema)
+    register_error_handler(app, BaseBadRequestError, BadRequestErrorResponseSchema)
+    register_error_handler(app, BaseConflictError, ConflictErrorResponseSchema)
