@@ -5,6 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from apps.config import app_settings
 from apps.web.bootstrap import exception_handlers, logger
+from apps.web.security import validate_signing_keys
 
 
 class LifespanEvent:
@@ -23,6 +24,7 @@ class LifespanEvent:
         """Событие выполняющееся при starts up."""
         if not app_settings.HEALTHCHECK_MODE:
             logger.setup()
+            validate_signing_keys()
 
     async def __aexit__(
         self,

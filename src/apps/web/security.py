@@ -15,7 +15,11 @@ from apps.web.app.utils.exceptions import BaseUnauthorizedError
 _security_token = HTTPBearer(auto_error=False)
 
 
-class SigningKeyNotFoundError(RuntimeError):
+class SigningKeyError(RuntimeError):
+    """Ключи подписи JWT отсутствуют или непригодны для настроенного алгоритма."""
+
+
+class SigningKeyNotFoundError(SigningKeyError):
     """Файл ключа подписи JWT не найден."""
 
 
@@ -56,6 +60,37 @@ def load_private_key() -> bytes:
 def load_public_key() -> bytes:
     """Загрузить публичный ключ проверки подписи JWT по пути из настроек."""
     return _read_key(app_settings.PUBLIC_KEY_PATH)
+
+
+def validate_signing_keys() -> None:
+    """
+    Проверить ключи подписи JWT: файлы читаются, подходят к алгоритму и образуют пару.
+
+    Вызывается при старте приложения, чтобы ошибка конфигурации ключей проявлялась сразу,
+    а не ответом 500 на первом запросе.
+
+    Raises:
+        SigningKeyError: Если ключ не найден, не в формате PEM, не подходит к алгоритму
+            или публичный ключ не соответствует приватному.
+    """
+    private_key = load_private_key()
+    public_key = load_public_key()
+    algorithm = app_settings.TOKEN_SIGNING_ALGORITHM
+    try:
+        probe_token = jwt.encode({"probe": True}, key=private_key, algorithm=algorithm)
+        jwt.decode(probe_token, key=public_key, algorithms=[algorithm])
+    except jwt.InvalidSignatureError:
+        msg = (
+            f"Публичный ключ {app_settings.PUBLIC_KEY_PATH} не соответствует "
+            f"приватному ключу {app_settings.PRIVATE_KEY_PATH}"
+        )
+        raise SigningKeyError(msg) from None
+    except (jwt.PyJWTError, NotImplementedError, TypeError, ValueError) as exc:
+        msg = (
+            f"Ключи подписи JWT ({app_settings.PRIVATE_KEY_PATH}, {app_settings.PUBLIC_KEY_PATH}) "
+            f"непригодны для алгоритма {algorithm}: {exc}. Ожидаются ключи в формате PEM."
+        )
+        raise SigningKeyError(msg) from exc
 
 
 async def _get_token(
