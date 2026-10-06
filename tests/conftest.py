@@ -114,6 +114,8 @@ class InMemoryRefreshTokenRepo(RefreshTokenRepoInterface):
                 self._storage[uid] = token.model_copy(update={"revoked": True})
 
 
+# NOTE(FM-16): изменения применяются сразу и rollback их не отменяет, в отличие от Postgres: после ошибки внутри
+# UoW (например, refresh удалённого пользователя) состояние хранилища не совпадает с продовым.
 class InMemoryUserUnitOfWork(AbstractUserUnitOfWork):
     """Единица работы поверх общего хранилища в памяти (изменения видны сразу)."""
 

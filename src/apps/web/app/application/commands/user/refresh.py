@@ -36,6 +36,8 @@ class RefreshTokenCommandHandler:
         Raises:
             InvalidRefreshTokenError: Если токен неизвестен, истёк, отозван или его пользователя больше нет.
         """
+        # NOTE(FM-16): строгая ротация без льготного окна (по контракту): если ответ потерялся после commit, у клиента
+        # остаётся только отозванный токен, и повтор даёт FM-401002 — нужен повторный вход.
         msg = "Сессия истекла, войдите снова"
         async with self._uow as uow:
             used_token = await uow.refresh_token_repo.revoke_active(hash_refresh_token(refresh_token), aware_now())

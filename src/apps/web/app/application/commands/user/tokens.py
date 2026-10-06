@@ -52,6 +52,8 @@ class TokenIssuer:
             uow: Открытая единица работы.
             user: Пользователь, которому выдаются токены.
         """
+        # TODO(FM-16): срок отсчитывается заново при каждой ротации — сессия без абсолютного предела живёт, пока
+        # refresh вызывается хотя бы раз в REFRESH_TOKEN_EXPIRE_DAYS; переносить исходный срок цепочки или ограничить.
         now = aware_now()
         refresh_token = generate_refresh_token()
         await uow.refresh_token_repo.create(
