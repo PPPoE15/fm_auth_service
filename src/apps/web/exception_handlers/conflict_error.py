@@ -1,9 +1,5 @@
-from fastapi import FastAPI, Request
-from fastapi.responses import JSONResponse
 from pydantic import Field
 from starlette import status
-
-from apps.web.app.utils.exceptions import BaseConflictError
 
 from . import base
 
@@ -42,16 +38,3 @@ class ConflictErrorResponseSchema(base.BaseErrorResponseSchema):
         examples=["FM-409000"],
         default="FM-409000",
     )
-
-
-def setup_conflict_exception_handlers(app: FastAPI) -> None:
-    """
-    Настройка обработчиков ошибок конфликта.
-
-    Args:
-        app: Приложение FastAPI.
-    """
-
-    @app.exception_handler(BaseConflictError)
-    async def conflict_exception_handler(request: Request, exc: BaseConflictError) -> JSONResponse:
-        return ConflictErrorResponseSchema.from_error(request, exc).json_response()

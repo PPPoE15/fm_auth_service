@@ -62,7 +62,7 @@ apps/
     security.py              # JWT decoding (get_user_info dep), argon2/bcrypt password hashing (hash_password/verify_password)
     connectors/postgres.py    # async_engine (create_async_engine from db_settings.DSN)
     bootstrap/                # app startup: logger.setup(), exception_handlers.setup()
-    exception_handlers/        # one module per BaseError subtype -> FastAPI exception handler (400/401/403/404/422/500)
+    exception_handlers/        # RFC7807 response schema per status (400/401/403/404/409/422/500); BaseError subtypes are mapped to schemas via base.register_error_handler in bootstrap/exception_handlers.py
     telemetry/logging_tools.py  # logging filters (ReplicaID, SegmentUID, ServiceName, TraceID)
     app/
       handlers/api/<domain>/     # FastAPI routers + request/response pydantic schemas + deps.py (wires command handlers)

@@ -1,9 +1,5 @@
-from fastapi import FastAPI, Request
-from fastapi.responses import JSONResponse
 from pydantic import Field
 from starlette import status
-
-from apps.web.app.utils.exceptions import BaseNotFoundError
 
 from . import base
 
@@ -42,16 +38,3 @@ class NotFoundErrorResponseSchema(base.BaseErrorResponseSchema):
         examples=["FM-404000"],
         default="FM-404000",
     )
-
-
-def setup_not_found_exception_handlers(app: FastAPI) -> None:
-    """
-    Настройка обработчиков ошибок авторизации.
-
-    Args:
-        app: Приложение FastAPI.
-    """
-
-    @app.exception_handler(BaseNotFoundError)
-    async def not_found_exception_handler(request: Request, exc: BaseNotFoundError) -> JSONResponse:
-        return NotFoundErrorResponseSchema.from_error(request, exc).json_response()

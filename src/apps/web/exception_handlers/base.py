@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING, Any, Self
+from typing import TYPE_CHECKING, Any, Self, cast
 
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, ConfigDict, Field
@@ -10,7 +10,7 @@ from starlette.status import (
 )
 
 if TYPE_CHECKING:
-    from fastapi import Request
+    from fastapi import FastAPI, Request
 
     from apps.web.app.utils.exceptions import BaseError
 
@@ -85,6 +85,26 @@ class BaseErrorResponseSchema(BaseModel):
             status_code=self.status,
             headers={"Content-Type": "application/problem+json"},
         )
+
+
+def register_error_handler(
+    app: FastAPI,
+    error_cls: type[BaseError],
+    schema_cls: type[BaseErrorResponseSchema],
+) -> None:
+    """
+    Зарегистрировать обработчик доменной ошибки, отвечающий по схеме RFC7807.
+
+    Args:
+        app: Приложение FastAPI.
+        error_cls: Базовый класс доменной ошибки (обрабатываются и его наследники).
+        schema_cls: Схема ответа с HTTP-статусом и кодом по умолчанию.
+    """
+
+    async def error_handler(request: Request, exc: Exception) -> JSONResponse:
+        return schema_cls.from_error(request, cast("BaseError", exc)).json_response()
+
+    app.add_exception_handler(error_cls, error_handler)
 
 
 def get_body_info(exception_body: Any | None, pointer: tuple) -> str | None:  # noqa: ANN401

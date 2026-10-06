@@ -1,9 +1,5 @@
-from fastapi import FastAPI, Request
-from fastapi.responses import JSONResponse
 from pydantic import Field
 from starlette import status
-
-from apps.web.app.utils.exceptions import BaseBadRequestError
 
 from . import base
 
@@ -42,16 +38,3 @@ class BadRequestErrorResponseSchema(base.BaseErrorResponseSchema):
         examples=["FM-400000"],
         default="FM-400000",
     )
-
-
-def setup_bad_request_exception_handlers(app: FastAPI) -> None:
-    """
-    Настройка обработчиков некорректного запроса.
-
-    Args:
-        app: Приложение FastAPI.
-    """
-
-    @app.exception_handler(BaseBadRequestError)
-    async def bad_request_exception_handler(request: Request, exc: BaseBadRequestError) -> JSONResponse:
-        return BadRequestErrorResponseSchema.from_error(request, exc).json_response()

@@ -1,9 +1,5 @@
-from fastapi import FastAPI, Request
-from fastapi.responses import JSONResponse
 from pydantic import Field
 from starlette import status
-
-from apps.web.app.utils.exceptions import BaseError, BaseUnauthorizedError
 
 from . import base
 
@@ -42,16 +38,3 @@ class UnauthorizedErrorResponseSchema(base.BaseErrorResponseSchema):
         examples=["FM-401000"],
         default="FM-401000",
     )
-
-
-def setup_unauthorized_exception_handlers(app: FastAPI) -> None:
-    """
-    Настройка обработчиков ошибок авторизации.
-
-    Args:
-        app: Приложение FastAPI.
-    """
-
-    @app.exception_handler(BaseUnauthorizedError)
-    async def unauthorized_exception_handler(request: Request, exc: BaseError) -> JSONResponse:
-        return UnauthorizedErrorResponseSchema.from_error(request, exc).json_response()
