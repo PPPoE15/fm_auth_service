@@ -93,7 +93,10 @@ def _rejected_value(body: Any, loc: tuple[int | str, ...]) -> str | None:  # noq
     if not loc or not isinstance(body, dict | list) or loc[0] in SENSITIVE_FIELDS:
         return None
     value = base.get_body_info(body, loc)
-    return None if value is None else str(value)
+    if value is None:
+        return None
+    # Одиночные суррогаты (\ud800) проходят json.loads, но не кодируются в UTF-8 при отправке ответа.
+    return str(value).encode("utf-8", "replace").decode("utf-8")
 
 
 def setup_validation_exception_handlers(app: FastAPI) -> None:

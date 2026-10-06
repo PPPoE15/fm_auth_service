@@ -466,3 +466,17 @@ def test_validation_error_for_malformed_json_does_not_echo_body(client: TestClie
     assert response.status_code == 422
     assert response.json()["code"] == "FM-422000"
     assert "Qz7#k-secret" not in response.text
+
+
+@pytest.mark.parametrize("field", ["name", "extra"])
+def test_validation_error_with_lone_surrogate_in_value(client: TestClient, field: str) -> None:
+    body = (
+        '{"email": "name@example.com", "password": "s3cret-Passw0rd", '
+        f'"password_confirmation": "s3cret-Passw0rd", "{field}": "\\ud800"'
+        + (', "name": "Артём"}' if field != "name" else "}")
+    )
+
+    response = client.post("/auth/registration", content=body.encode(), headers={"Content-Type": "application/json"})
+
+    assert response.status_code == 422
+    assert field in _validation_fields(response)
