@@ -22,12 +22,12 @@ class AppSettings(BaseSettings):
         description="Время жизни токена.",
     )
     PRIVATE_KEY_PATH: str = Field(
-        ".ssh/id_rsa",
-        description="Расположение приватного ключа подписи JWT (PEM).",
+        f"{SECRETS_DIR}/jwt_private_key",
+        description="Расположение приватного ключа подписи JWT (PEM, не формат OpenSSH).",
     )
     PUBLIC_KEY_PATH: str = Field(
-        ".ssh/id_rsa.pub",
-        description="Расположение публичного ключа для проверки подписи JWT (PEM).",
+        f"{SECRETS_DIR}/jwt_public_key",
+        description="Расположение публичного ключа для проверки подписи JWT (PEM, не формат OpenSSH).",
     )
     TOKEN_SIGNING_ALGORITHM: str = Field(
         "RS256",

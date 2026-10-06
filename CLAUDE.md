@@ -85,4 +85,11 @@ Request flow: router endpoint (`handlers/api/<domain>/endpoints.py`) → `deps.b
 Key separation to preserve when adding code:
 - **Aggregators** (`app/aggregators/models`) are the domain-model pydantic classes application/command code operates on. **DB models** (`apps/db_models`) are SQLAlchemy ORM classes, only touched inside `infrastructure/db/repos/*`. Repos convert between the two via `builders.py` — don't leak ORM types past the repo layer.
 - New domains follow the same four-fold shape: `handlers/api/<domain>/` (HTTP), `application/commands/<domain>/` (use cases + UoW + exceptions), `aggregators/models/` (domain model), `infrastructure/db/repos/<domain>/` (persistence). Wire the new router into `apps/web/router.py`.
-- Auth: JWTs are signed with RS256 (`TOKEN_SIGNING_ALGORITHM`) using the PEM private key at `PRIVATE_KEY_PATH` and carry `sub`, `login`, `exp` (lifetime `ACCESS_TOKEN_EXPIRE_MINUTES`). `apps.web.security.get_user_info` is a FastAPI dependency that verifies signature and `exp` with the PEM public key at `PUBLIC_KEY_PATH` and raises `InvalidTokenError` (401, `FM-401000`) otherwise. Key files are read lazily via `load_private_key()` / `load_public_key()` (cached per path); a missing file raises `SigningKeyNotFoundError`.
+- Auth: JWTs are signed with RS256 (`TOKEN_SIGNING_ALGORITHM`) using the PEM private key at `PRIVATE_KEY_PATH` and carry `sub`, `login`, `exp` (lifetime `ACCESS_TOKEN_EXPIRE_MINUTES`). `apps.web.security.get_user_info` is a FastAPI dependency that verifies signature and `exp` with the PEM public key at `PUBLIC_KEY_PATH` and raises `InvalidTokenError` (401, `FM-401000`) otherwise. Key files are read lazily via `load_private_key()` / `load_public_key()` (cached per path); a missing file raises `SigningKeyNotFoundError`. Default paths are `/run/secrets/jwt_private_key` / `/run/secrets/jwt_public_key` (Docker secrets; wiring them into `fm_devops` compose is FM-001.3). Keys must be PEM — `ssh-keygen`'s default OpenSSH format is rejected by PyJWT. Generate a dev pair with:
+
+```bash
+openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:2048 -out jwt_private_key
+openssl pkey -in jwt_private_key -pubout -out jwt_public_key
+```
+
+For a local run outside Docker, point `PRIVATE_KEY_PATH` / `PUBLIC_KEY_PATH` at those files via environment variables (`uvicorn_up.sh` regenerates `dev.env` from `template.env`, and env vars take precedence over the env file).
