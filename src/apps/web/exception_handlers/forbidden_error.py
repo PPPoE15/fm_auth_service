@@ -54,5 +54,4 @@ def setup_forbidden_exception_handlers(app: FastAPI) -> None:
 
     @app.exception_handler(BaseForbiddenError)
     async def forbidden_exception_handler(request: Request, exc: BaseForbiddenError) -> JSONResponse:
-        instance = request.url.path
-        return ForbiddenErrorResponseSchema(instance=instance, detail=exc.msg).json_response()
+        return ForbiddenErrorResponseSchema.from_error(request, exc).json_response()

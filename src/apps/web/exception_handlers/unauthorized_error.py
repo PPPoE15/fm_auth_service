@@ -54,5 +54,4 @@ def setup_unauthorized_exception_handlers(app: FastAPI) -> None:
 
     @app.exception_handler(BaseUnauthorizedError)
     async def unauthorized_exception_handler(request: Request, exc: BaseError) -> JSONResponse:
-        instance = request.url.path
-        return UnauthorizedErrorResponseSchema(instance=instance, detail=exc.msg).json_response()
+        return UnauthorizedErrorResponseSchema.from_error(request, exc).json_response()

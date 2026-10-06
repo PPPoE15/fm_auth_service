@@ -54,5 +54,4 @@ def setup_bad_request_exception_handlers(app: FastAPI) -> None:
 
     @app.exception_handler(BaseBadRequestError)
     async def bad_request_exception_handler(request: Request, exc: BaseBadRequestError) -> JSONResponse:
-        instance = request.url.path
-        return BadRequestErrorResponseSchema(instance=instance, detail=exc.msg).json_response()
+        return BadRequestErrorResponseSchema.from_error(request, exc).json_response()

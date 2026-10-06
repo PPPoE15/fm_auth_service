@@ -54,8 +54,4 @@ def setup_conflict_exception_handlers(app: FastAPI) -> None:
 
     @app.exception_handler(BaseConflictError)
     async def conflict_exception_handler(request: Request, exc: BaseConflictError) -> JSONResponse:
-        instance = request.url.path
-        response = ConflictErrorResponseSchema(instance=instance, detail=exc.msg)
-        if exc.code:
-            response.code = exc.code
-        return response.json_response()
+        return ConflictErrorResponseSchema.from_error(request, exc).json_response()
