@@ -428,3 +428,41 @@ def test_request_without_token_is_rejected(client: TestClient) -> None:
 
     assert response.status_code == 401
     assert response.json()["code"] == "FM-401000"
+
+
+# --- Ответ 422 на некорректное тело ---
+
+
+def test_validation_error_stringifies_non_string_rejected_value(client: TestClient) -> None:
+    response = _register(client, name=123)
+
+    assert response.status_code == 422
+    [item] = response.json()["validation"]
+    assert item["field"] == "name"
+    assert item["rejectedValue"] == "123"
+
+
+@pytest.mark.parametrize("body", [None, [], "строка"])
+def test_validation_error_for_non_object_body(client: TestClient, body: list[Any] | str | None) -> None:
+    response = client.post("/auth/registration", json=body)
+
+    assert response.status_code == 422
+    assert response.json()["code"] == "FM-422000"
+
+
+def test_validation_error_for_empty_body(client: TestClient) -> None:
+    response = client.post("/auth/token", content=b"", headers={"Content-Type": "application/json"})
+
+    assert response.status_code == 422
+
+
+def test_validation_error_for_malformed_json_does_not_echo_body(client: TestClient) -> None:
+    response = client.post(
+        "/auth/token",
+        content=b'{"email": "name@example.com", "password": "Qz7#k-secret",',
+        headers={"Content-Type": "application/json"},
+    )
+
+    assert response.status_code == 422
+    assert response.json()["code"] == "FM-422000"
+    assert "Qz7#k-secret" not in response.text

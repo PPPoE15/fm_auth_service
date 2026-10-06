@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING, cast
+from typing import Any
 
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
@@ -9,9 +9,6 @@ from starlette import status
 from apps.web.app.utils.exceptions import BaseCustomValidationError
 
 from . import base
-
-if TYPE_CHECKING:
-    from collections.abc import Iterable
 
 # Значения этих полей не возвращаются в ответе об ошибке валидации.
 SENSITIVE_FIELDS = frozenset({"password", "password_confirmation"})
@@ -83,6 +80,22 @@ class ValidationErrorResponseSchema(base.BaseErrorResponseSchema):
     )
 
 
+def _rejected_value(body: Any, loc: tuple[int | str, ...]) -> str | None:  # noqa: ANN401
+    """
+    Значение поля из тела запроса для ответа об ошибке валидации.
+
+    Сырое тело (строка — например, битый JSON) и значения паролей не возвращаются никогда.
+
+    Args:
+        body: Разобранное тело запроса.
+        loc: Путь к полю внутри тела.
+    """
+    if not loc or not isinstance(body, dict | list) or loc[0] in SENSITIVE_FIELDS:
+        return None
+    value = base.get_body_info(body, loc)
+    return None if value is None else str(value)
+
+
 def setup_validation_exception_handlers(app: FastAPI) -> None:
     """
     Настройка обработчиков ошибок валидации.
@@ -93,18 +106,15 @@ def setup_validation_exception_handlers(app: FastAPI) -> None:
 
     @app.exception_handler(RequestValidationError)
     async def validation_exception_handler(request: Request, exc: RequestValidationError) -> JSONResponse:
-        error_validation = []
-        for err in exc.errors():
-            field = ".".join(cast("Iterable[str]", err["loc"][1:])) if isinstance(exc.body, str) else str(err["loc"][1])
-            rejected_value = None if field in SENSITIVE_FIELDS else base.get_body_info(exc.body, err["loc"][1:])
-            error_validation.append(
-                ValidationField(
-                    message=err["msg"],
-                    field=field,
-                    rejectedValue=rejected_value,
-                    rule=err["type"],
-                ),
+        error_validation = [
+            ValidationField(
+                message=err["msg"],
+                field=".".join(str(part) for part in err["loc"][1:]) or str(err["loc"][0]),
+                rejectedValue=_rejected_value(exc.body, tuple(err["loc"][1:])),
+                rule=err["type"],
             )
+            for err in exc.errors()
+        ]
         error_correct_form = ValidationErrorResponseSchema(
             instance=request.url.path,
             validation=error_validation,
