@@ -54,7 +54,7 @@ class CreateUserCommandHandler:
             if await uow.user_repo.get_by_email(email):
                 raise exceptions.UserAlreadyExistsError(already_exists_msg)
 
-            # TODO(FM-001.7): argon2 считается при открытой транзакции и занятом соединении из пула; при выносе
+            # TODO(FM-001.11): argon2 считается при открытой транзакции и занятом соединении из пула; при выносе
             # хеширования в поток (см. TODO в authenticate.py) хешировать до входа в UoW.
             user_agg = User.create(
                 name=name,
