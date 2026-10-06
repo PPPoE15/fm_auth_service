@@ -24,6 +24,8 @@ def _reject_control_chars(value: str) -> str:
 _EMAIL_MAX_LENGTH = 254
 
 
+# NOTE(FM-001.7): превышение длины после lower() отдаёт rule value_error, а не string_too_long, как обычная
+# проверка длины; если клиенту понадобится сопоставлять по rule — бросать PydanticCustomError("string_too_long").
 def _check_email_length(value: str) -> str:
     """
     Проверить длину email после нормализации.
@@ -44,6 +46,8 @@ UserNameField = Annotated[
     StringConstraints(strip_whitespace=True, min_length=1, max_length=64),
     AfterValidator(_reject_control_chars),
 ]
+# TODO(FM-001.7): невидимые символы (U+200B–U+200F, U+202A–U+202E, U+2060, U+FEFF) и разная Unicode-нормализация
+# (NFC/NFD) дают внешне одинаковые, но разные email; отклонять их и делать NFC перед lower().
 EmailField = Annotated[
     apps_types.Email,
     StringConstraints(

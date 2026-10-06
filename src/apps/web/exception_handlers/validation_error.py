@@ -98,6 +98,8 @@ def _rejected_value(body: Any, loc: tuple[int | str, ...]) -> str | None:  # noq
     if value is None:
         return None
     # Одиночные суррогаты (\ud800) проходят json.loads, но не кодируются в UTF-8 при отправке ответа.
+    # TODO(FM-001.7): не строки отдаются как Python repr (True, {'a': 'b'}, inf);
+    # для них использовать json.dumps(ensure_ascii=False).
     return str(value).encode("utf-8", "replace").decode("utf-8")
 
 
