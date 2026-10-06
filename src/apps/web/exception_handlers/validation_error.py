@@ -11,6 +11,8 @@ from apps.web.app.utils.exceptions import BaseCustomValidationError
 from . import base
 
 # Значения этих полей не возвращаются в ответе об ошибке валидации.
+# TODO(FM-001.7): значения лишних полей (extra_forbidden) клиенту не нужны, но возвращаются — пароль под
+# чужим ключом (например, passwordConfirmation) уйдёт в rejectedValue; для extra_forbidden отдавать None.
 SENSITIVE_FIELDS = frozenset({"password", "password_confirmation"})
 
 
@@ -132,6 +134,8 @@ def setup_validation_exception_handlers(app: FastAPI) -> None:
             validation.append(
                 ValidationField(message=exc.msg, field=exc.field, rejectedValue=None, rule="value_error"),
             )
+        # TODO(FM-001.7): наследник без собственного code получит FM-422000 при статусе 400; задать код по умолчанию
+        # FM-400000 и переиспользовать BaseErrorResponseSchema.from_error вместо ручной подстановки code.
         response = ValidationErrorResponseSchema(
             type="/help-center?helpSectionId=errors#400",
             instance=request.url.path,
