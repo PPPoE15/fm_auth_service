@@ -170,6 +170,8 @@ def test_registration_with_mismatched_passwords_returns_bad_request(client: Test
         ({"email": "not-an-email"}, "email"),
         ({"email": "a@"}, "email"),
         ({"email": "two@at@example.com"}, "email"),
+        ({"email": "a\x00b@example.com"}, "email"),
+        ({"email": "a\x7fb@example.com"}, "email"),
         ({"email": "a" * 245 + "@example.com"}, "email"),
         ({"password": "short", "password_confirmation": "short"}, "password"),
         ({"password": "x" * 129, "password_confirmation": "x" * 129}, "password"),

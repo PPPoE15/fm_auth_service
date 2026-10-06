@@ -33,6 +33,7 @@ EmailField = Annotated[
         max_length=254,
         pattern=r"^[^@\s]+@[^@\s]+\.[^@\s]+$",
     ),
+    AfterValidator(_reject_control_chars),
 ]
 PasswordField = Annotated[apps_types.Password, StringConstraints(min_length=8, max_length=128)]
 
