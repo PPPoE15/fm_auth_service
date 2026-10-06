@@ -13,6 +13,9 @@ from . import base
 if TYPE_CHECKING:
     from collections.abc import Iterable
 
+# Значения этих полей не возвращаются в ответе об ошибке валидации.
+SENSITIVE_FIELDS = frozenset({"password", "password_confirmation"})
+
 
 class ValidationField(BaseModel):
     """Поле ошибки с детальной информацией"""
@@ -90,17 +93,18 @@ def setup_validation_exception_handlers(app: FastAPI) -> None:
 
     @app.exception_handler(RequestValidationError)
     async def validation_exception_handler(request: Request, exc: RequestValidationError) -> JSONResponse:
-        error_validation = [
-            ValidationField(
-                message=err["msg"],
-                field=".".join(cast("Iterable[str]", err["loc"][1:]))
-                if isinstance(exc.body, str)
-                else str(err["loc"][1]),
-                rejectedValue=base.get_body_info(exc.body, err["loc"][1:]),
-                rule=err["type"],
+        error_validation = []
+        for err in exc.errors():
+            field = ".".join(cast("Iterable[str]", err["loc"][1:])) if isinstance(exc.body, str) else str(err["loc"][1])
+            rejected_value = None if field in SENSITIVE_FIELDS else base.get_body_info(exc.body, err["loc"][1:])
+            error_validation.append(
+                ValidationField(
+                    message=err["msg"],
+                    field=field,
+                    rejectedValue=rejected_value,
+                    rule=err["type"],
+                ),
             )
-            for err in exc.errors()
-        ]
         error_correct_form = ValidationErrorResponseSchema(
             instance=request.url.path,
             validation=error_validation,
@@ -110,10 +114,18 @@ def setup_validation_exception_handlers(app: FastAPI) -> None:
 
     @app.exception_handler(BaseCustomValidationError)
     async def custom_validation_exception_handler(request: Request, exc: BaseCustomValidationError) -> JSONResponse:
-        instance = request.url.path
-        return ValidationErrorResponseSchema(
-            instance=instance,
+        validation = []
+        if exc.field:
+            validation.append(
+                ValidationField(message=exc.msg, field=exc.field, rejectedValue=None, rule="value_error"),
+            )
+        response = ValidationErrorResponseSchema(
+            type="/help-center?helpSectionId=errors#400",
+            instance=request.url.path,
             status=status.HTTP_400_BAD_REQUEST,
             detail=exc.msg,
-            validation=[],
-        ).json_response()
+            validation=validation,
+        )
+        if exc.code:
+            response.code = exc.code
+        return response.json_response()

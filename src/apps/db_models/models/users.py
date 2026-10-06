@@ -18,18 +18,18 @@ class User(AsyncBase):
         primary_key=True,
         doc="Уникальный ID записи пользователя.",
     )
-    login: Mapped[apps_types.UserLogin] = mapped_column(
-        String,
-        doc="Имя пользователя",
+    name: Mapped[apps_types.UserName] = mapped_column(
+        String(64),
+        doc="Как обращаться к пользователю (не уникально).",
     )
     password_hash: Mapped[apps_types.PasswordHash] = mapped_column(
         String,
         doc="Хэш пароля.",
     )
-    email: Mapped[apps_types.Email | None] = mapped_column(
-        String,
-        doc="Email пользователя",
-        nullable=True,
+    email: Mapped[apps_types.Email] = mapped_column(
+        String(254),
+        doc="Email пользователя в нижнем регистре (уникален, используется для входа).",
+        unique=True,
     )
     created_date: Mapped[datetime] = mapped_column(
         TZDateTime,

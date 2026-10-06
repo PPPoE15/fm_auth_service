@@ -4,6 +4,10 @@ from apps import apps_types
 from apps.web.app.aggregators.models import User
 
 
+class EmailAlreadyTakenError(Exception):
+    """Email уже занят другим пользователем (нарушена уникальность в хранилище)."""
+
+
 class UserRepoInterface(abc.ABC):
     """Интерфейс репозитория пользователей."""
 
@@ -14,6 +18,9 @@ class UserRepoInterface(abc.ABC):
 
         Args:
             system_user: Модель системного пользователя.
+
+        Raises:
+            EmailAlreadyTakenError: Если пользователь с таким email уже есть.
         """
 
     @abc.abstractmethod
@@ -26,12 +33,12 @@ class UserRepoInterface(abc.ABC):
         """
 
     @abc.abstractmethod
-    async def get_by_login(self, login: apps_types.UserLogin) -> User | None:
+    async def get_by_email(self, email: apps_types.Email) -> User | None:
         """
-        Получить пользователя по его логину
+        Получить пользователя по email.
 
         Args:
-            login: Логин пользователя
+            email: Email пользователя (в нормализованном виде: нижний регистр, без пробелов по краям).
         """
 
     @abc.abstractmethod

@@ -7,9 +7,9 @@ from apps import apps_types
 from apps.web.app.aggregators.models import User
 from apps.web.app.utils.datetime_tz import aware_now
 from apps.web.logger import get_logger
-from apps.web.security import verify_password
+from apps.web.security import dummy_password_hash, verify_password
 
-from .exceptions import UnauthorizedError
+from .exceptions import InvalidCredentialsError
 from .uow import AbstractUserUnitOfWork
 
 
@@ -40,24 +40,27 @@ class AuthenticateCommandHandler:
 
     async def handle(
         self,
-        login: apps_types.UserLogin,
+        email: apps_types.Email,
         password: apps_types.Password,
     ) -> str:
         """
         Аутентифицировать и создать JWT-токен.
 
         Args:
-            login: Логин пользователя.
+            email: Email пользователя (нормализованный: нижний регистр, без пробелов по краям).
             password: Пароль пользователя.
+
+        Raises:
+            InvalidCredentialsError: Если email или пароль неверны (какое из двух — не раскрывается).
         """
         async with self._uow as uow:
-            user = await uow.user_repo.get_by_login(login)
-            if not user:
-                msg = "Неверное имя пользователя или пароль"
-                raise UnauthorizedError(msg)
-            if not verify_password(password, user.password_hash):
-                msg = "Неверное имя пользователя или пароль"
-                raise UnauthorizedError(msg)
+            user = await uow.user_repo.get_by_email(email)
+        # Для неизвестного email пароль всё равно проверяется (по фиктивному хешу), чтобы время ответа
+        # не выдавало, зарегистрирован ли email.
+        password_hash = user.password_hash if user else dummy_password_hash()
+        if not verify_password(password, password_hash) or user is None:
+            msg = "Неверный email или пароль"
+            raise InvalidCredentialsError(msg)
 
         return self._create_access_token(user)
 
@@ -71,11 +74,12 @@ class AuthenticateCommandHandler:
         expire = aware_now() + timedelta(minutes=self._token_expire_minutes)
         payload: dict[str, Any] = {
             "sub": str(user.uid),
-            "login": user.login,
+            # NOTE(FM-001.7): claim login нужен только fm_transaction_service — его UserInfo требует это поле
+            # до FM-001.2. Логин теперь — email. Сам сервис авторизации читает из токена только sub.
+            "login": user.email,
             "exp": expire,
         }
-        msg = f"Авторизован пользователь login: {user.login}"
-        self._logger.info(msg)
+        self._logger.info("Авторизован пользователь %s", user.uid)
         return jwt.encode(
             payload=payload,
             key=self._private_key,

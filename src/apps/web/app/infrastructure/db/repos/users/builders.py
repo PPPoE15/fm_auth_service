@@ -27,7 +27,7 @@ def build(orm_user: orm_models.User) -> User:
     """
     return User(
         uid=orm_user.uid,
-        login=orm_user.login,
+        name=orm_user.name,
         password_hash=orm_user.password_hash,
         email=orm_user.email,
         created_date=orm_user.created_date,

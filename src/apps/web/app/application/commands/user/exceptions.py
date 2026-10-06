@@ -1,4 +1,4 @@
-from apps.web.app.utils.exceptions import BaseBadRequestError, BaseConflictError, BaseUnauthorizedError
+from apps.web.app.utils.exceptions import BaseConflictError, BaseCustomValidationError, BaseUnauthorizedError
 
 
 class UserAlreadyExistsError(BaseConflictError):
@@ -7,9 +7,14 @@ class UserAlreadyExistsError(BaseConflictError):
     code = "FM-409001"
 
 
-class PasswordConfirmationError(BaseBadRequestError):
+class PasswordConfirmationError(BaseCustomValidationError):
     """Пароли не совпадают"""
 
+    code = "FM-400001"
+    field = "password_confirmation"
 
-class UnauthorizedError(BaseUnauthorizedError):
-    """Ошибка авторизации."""
+
+class InvalidCredentialsError(BaseUnauthorizedError):
+    """Неверный email или пароль (какое из двух — не раскрывается)."""
+
+    code = "FM-401001"

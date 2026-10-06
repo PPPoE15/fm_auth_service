@@ -1,4 +1,5 @@
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 
 from apps import apps_types
 from apps import db_models as orm_models
@@ -6,7 +7,9 @@ from apps.web.app.aggregators.models import User
 from apps.web.app.infrastructure.db.repos.base import BaseSqlAlchemyRepo
 
 from . import builders
-from .interface import UserRepoInterface
+from .interface import EmailAlreadyTakenError, UserRepoInterface
+
+_EMAIL_UNIQUE_CONSTRAINT = "uq_users_email"
 
 
 class UserRepo(UserRepoInterface, BaseSqlAlchemyRepo):
@@ -15,13 +18,20 @@ class UserRepo(UserRepoInterface, BaseSqlAlchemyRepo):
     async def create(self, system_user: User) -> None:
         orm_system_user = builders.build_orm(system_user)
         self._session.add(orm_system_user)
+        # flush сразу, чтобы нарушение уникальности email проявилось здесь, а не на commit.
+        try:
+            await self._session.flush()
+        except IntegrityError as exc:
+            if _EMAIL_UNIQUE_CONSTRAINT in str(exc.orig):
+                raise EmailAlreadyTakenError from exc
+            raise
 
     async def update(self, system_user: User) -> None:
         orm_system_user = builders.build_orm(system_user)
         orm_system_user = await self._session.merge(orm_system_user)
 
-    async def get_by_login(self, login: apps_types.UserLogin) -> User | None:
-        stmt = select(orm_models.User).where(orm_models.User.login == login)
+    async def get_by_email(self, email: apps_types.Email) -> User | None:
+        stmt = select(orm_models.User).where(orm_models.User.email == email)
         orm_user = await self._session.scalar(stmt)
         return builders.build(orm_user) if orm_user else None
 

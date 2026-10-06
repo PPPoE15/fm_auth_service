@@ -20,7 +20,7 @@ from apps import apps_types  # noqa: E402
 from apps.config import app_settings  # noqa: E402
 from apps.web.app.aggregators.models import User  # noqa: E402
 from apps.web.app.application.commands.user.uow import AbstractUserUnitOfWork  # noqa: E402
-from apps.web.app.infrastructure.db.repos.users import UserRepoInterface  # noqa: E402
+from apps.web.app.infrastructure.db.repos.users import EmailAlreadyTakenError, UserRepoInterface  # noqa: E402
 
 
 def generate_rsa_pem_pair() -> tuple[bytes, bytes]:
@@ -69,13 +69,16 @@ class InMemoryUserRepo(UserRepoInterface):
         self._storage = storage
 
     async def create(self, system_user: User) -> None:
+        # Как уникальный индекс users.email в БД.
+        if any(user.email == system_user.email for user in self._storage.values()):
+            raise EmailAlreadyTakenError
         self._storage[system_user.uid] = system_user
 
     async def update(self, system_user: User) -> None:
         self._storage[system_user.uid] = system_user
 
-    async def get_by_login(self, login: apps_types.UserLogin) -> User | None:
-        return next((user for user in self._storage.values() if user.login == login), None)
+    async def get_by_email(self, email: apps_types.Email) -> User | None:
+        return next((user for user in self._storage.values() if user.email == email), None)
 
     async def get_by_uid(self, uid: apps_types.UserUID) -> User | None:
         return self._storage.get(uid)

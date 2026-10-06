@@ -1,3 +1,4 @@
+import secrets
 from functools import cache
 from pathlib import Path
 from typing import Annotated
@@ -31,7 +32,6 @@ class UserInfo(BaseModel):
     """Информация о пользователе."""
 
     uid: apps_types.UserUID = Field(description="Идентификатор пользователя.", alias="sub")
-    login: apps_types.UserLogin = Field(description="Логин пользователя.")
 
 
 @cache
@@ -150,6 +150,12 @@ _pwd_context = CryptContext(
 def hash_password(password: apps_types.Password) -> apps_types.PasswordHash:
     """Получить хэш пароля"""
     return _pwd_context.hash(password)
+
+
+@cache
+def dummy_password_hash() -> apps_types.PasswordHash:
+    """Хеш случайного пароля для проверки при входе с неизвестным email (выравнивает время ответа)."""
+    return hash_password(secrets.token_urlsafe(16))
 
 
 def verify_password(plain_password: apps_types.Password, hashed_password: apps_types.PasswordHash) -> bool:

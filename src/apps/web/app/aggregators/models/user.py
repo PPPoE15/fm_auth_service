@@ -14,14 +14,14 @@ class User(Base):
     uid: apps_types.UserUID = Field(
         description="Уникальный ID записи пользователя.",
     )
-    login: apps_types.UserLogin = Field(
-        description="Имя пользователя",
+    name: apps_types.UserName = Field(
+        description="Как обращаться к пользователю (не уникально).",
     )
     password_hash: apps_types.PasswordHash = Field(
         description="Хэш пароля.",
     )
-    email: apps_types.Email | None = Field(
-        description="Email пользователя",
+    email: apps_types.Email = Field(
+        description="Email пользователя (уникален, используется для входа).",
     )
     created_date: datetime = Field(
         title="Created Date",
@@ -32,16 +32,16 @@ class User(Base):
     @classmethod
     def create(
         cls,
-        login: apps_types.UserLogin,
+        name: apps_types.UserName,
         password_hash: apps_types.PasswordHash,
-        email: apps_types.Email | None,
+        email: apps_types.Email,
         created_date: datetime,
     ) -> Self:
         """
         Создать пользователя.
 
         Args:
-            login: Имя пользователя.
+            name: Как обращаться к пользователю.
             password_hash: Хэш пароля.
             email: Email пользователя.
             created_date: Дата создания пользователя.
@@ -49,7 +49,7 @@ class User(Base):
         user_uid = uuid4()
         return cls(
             uid=user_uid,
-            login=login,
+            name=name,
             password_hash=password_hash,
             email=email,
             created_date=created_date,
