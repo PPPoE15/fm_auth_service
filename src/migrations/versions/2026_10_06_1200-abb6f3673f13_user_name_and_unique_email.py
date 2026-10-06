@@ -29,6 +29,8 @@ def upgrade() -> None:
         )
         raise RuntimeError(msg)
 
+    # NOTE(FM-001.7): существующие email не приводятся к нижнему регистру и не проверяются на дубликаты без
+    # учёта регистра, login длиннее 64 символов уронит смену типа — пользователей нет (решение в PR #11).
     op.alter_column("users", "login", new_column_name="name", type_=sa.String(length=64), existing_nullable=False)
     op.alter_column("users", "email", type_=sa.String(length=254), nullable=False, existing_nullable=True)
     op.create_unique_constraint(op.f("uq_users_email"), "users", ["email"])

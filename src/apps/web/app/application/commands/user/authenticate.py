@@ -58,6 +58,8 @@ class AuthenticateCommandHandler:
         # Для неизвестного email пароль всё равно проверяется (по фиктивному хешу), чтобы время ответа
         # не выдавало, зарегистрирован ли email.
         password_hash = user.password_hash if user else dummy_password_hash()
+        # TODO(FM-001.7): argon2 (64 МиБ, time_cost=3) считается синхронно и блокирует event loop, теперь и для
+        # неизвестных email; вынести в поток (anyio.to_thread.run_sync) и добавить rate limit на /token.
         if not verify_password(password, password_hash) or user is None:
             msg = "Неверный email или пароль"
             raise InvalidCredentialsError(msg)

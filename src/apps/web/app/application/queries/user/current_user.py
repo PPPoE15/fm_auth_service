@@ -4,6 +4,8 @@ from apps.web.app.application.commands.user.uow import AbstractUserUnitOfWork
 from apps.web.app.utils.exceptions import BaseUnauthorizedError
 
 
+# NOTE(FM-001.7): отвечает так же, как InvalidTokenError (401, FM-401000) — для клиента это недействительная
+# сессия. Обработчик запроса берёт AbstractUserUnitOfWork со стороны команд: отдельной read-модели пока нет.
 class CurrentUserNotFoundError(BaseUnauthorizedError):
     """Пользователь из действительного токена не найден (например, удалён)."""
 

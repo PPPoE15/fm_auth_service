@@ -6,6 +6,8 @@ from pydantic import AfterValidator, BaseModel, ConfigDict, Field, StringConstra
 from apps import apps_types
 from apps.utils.schemas import Base
 
+# NOTE(FM-001.7): по контракту отклоняются только C0 и DEL; C1 (U+0080–U+009F), U+2028/2029 и bidi-override
+# (U+202E) в name проходят — при необходимости ужесточить вместе с контрактом.
 _CONTROL_CHARS = re.compile(r"[\x00-\x1F\x7F]")
 
 

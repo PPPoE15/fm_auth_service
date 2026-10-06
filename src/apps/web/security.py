@@ -152,6 +152,8 @@ def hash_password(password: apps_types.Password) -> apps_types.PasswordHash:
     return _pwd_context.hash(password)
 
 
+# TODO(FM-001.7): хеш считается лениво — первый вход с неизвестным email после рестарта медленнее;
+# вычислять при старте (LifespanEvent). Время проверки старых bcrypt-хешей от него тоже отличается.
 @cache
 def dummy_password_hash() -> apps_types.PasswordHash:
     """Хеш случайного пароля для проверки при входе с неизвестным email (выравнивает время ответа)."""
