@@ -1,6 +1,7 @@
 import os
 from pathlib import Path
 from typing import Any, Self
+from uuid import UUID
 
 import pytest
 from cryptography.hazmat.primitives import serialization
@@ -18,9 +19,12 @@ for _name, _value in {
 
 from apps import apps_types  # noqa: E402
 from apps.config import app_settings  # noqa: E402
-from apps.web.app.aggregators.models import User  # noqa: E402
+from apps.web.app.aggregators.models import RefreshToken, User  # noqa: E402
 from apps.web.app.application.commands.user.uow import AbstractUserUnitOfWork  # noqa: E402
+from apps.web.app.infrastructure.db.repos.refresh_tokens import RefreshTokenRepoInterface  # noqa: E402
 from apps.web.app.infrastructure.db.repos.users import EmailAlreadyTakenError, UserRepoInterface  # noqa: E402
+
+RefreshTokensStorage = dict[UUID, RefreshToken]
 
 
 def generate_rsa_pem_pair() -> tuple[bytes, bytes]:
@@ -87,15 +91,44 @@ class InMemoryUserRepo(UserRepoInterface):
         self._storage.pop(system_user.uid, None)
 
 
+# NOTE(FM-16): блокировка (FOR UPDATE) не моделируется — «из параллельных refresh проходит один» тестами не
+# покрыто; это проверяется вручную на Postgres (см. «Adapters stay thin» в CLAUDE.md).
+class InMemoryRefreshTokenRepo(RefreshTokenRepoInterface):
+    """Репозиторий refresh-токенов в памяти."""
+
+    def __init__(self, storage: RefreshTokensStorage) -> None:
+        self._storage = storage
+
+    async def create(self, refresh_token: RefreshToken) -> None:
+        self._storage[refresh_token.uid] = refresh_token.model_copy()
+
+    async def get_by_hash_for_update(self, token_hash: str) -> RefreshToken | None:
+        token = next((token for token in self._storage.values() if token.token_hash == token_hash), None)
+        # Копия, как строка из БД: изменения агрегата попадают в хранилище только через update.
+        return token.model_copy() if token else None
+
+    async def update(self, refresh_token: RefreshToken) -> None:
+        self._storage[refresh_token.uid] = refresh_token.model_copy()
+
+
+# NOTE(FM-16): изменения применяются сразу и rollback их не отменяет, в отличие от Postgres: после ошибки внутри
+# UoW (например, refresh удалённого пользователя) состояние хранилища не совпадает с продовым.
 class InMemoryUserUnitOfWork(AbstractUserUnitOfWork):
     """Единица работы поверх общего хранилища в памяти (изменения видны сразу)."""
 
-    def __init__(self, storage: dict[apps_types.UserUID, User], **_: Any) -> None:
+    def __init__(
+        self,
+        storage: dict[apps_types.UserUID, User],
+        refresh_tokens_storage: RefreshTokensStorage | None = None,
+        **_: Any,
+    ) -> None:
         self._storage = storage
+        self._refresh_tokens_storage = {} if refresh_tokens_storage is None else refresh_tokens_storage
         self.committed = False
 
     async def __aenter__(self) -> Self:
         self.user_repo = InMemoryUserRepo(self._storage)
+        self.refresh_token_repo = InMemoryRefreshTokenRepo(self._refresh_tokens_storage)
         return self
 
     async def rollback(self) -> None:
@@ -112,6 +145,15 @@ def users_storage() -> dict[apps_types.UserUID, User]:
 
 
 @pytest.fixture
-def uow(users_storage: dict[apps_types.UserUID, User]) -> InMemoryUserUnitOfWork:
+def refresh_tokens_storage() -> RefreshTokensStorage:
+    """Хранилище refresh-токенов одного теста."""
+    return {}
+
+
+@pytest.fixture
+def uow(
+    users_storage: dict[apps_types.UserUID, User],
+    refresh_tokens_storage: RefreshTokensStorage,
+) -> InMemoryUserUnitOfWork:
     """Единица работы в памяти."""
-    return InMemoryUserUnitOfWork(users_storage)
+    return InMemoryUserUnitOfWork(users_storage, refresh_tokens_storage)

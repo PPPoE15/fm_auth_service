@@ -1,3 +1,4 @@
+import hashlib
 import secrets
 from functools import cache
 from pathlib import Path
@@ -135,6 +136,24 @@ async def get_user_info(token: Annotated[HTTPAuthorizationCredentials, Depends(_
     except (jwt.InvalidTokenError, ValidationError):
         msg = "Некорректный токен!"
         raise InvalidTokenError(msg) from None
+
+
+def generate_refresh_token() -> str:
+    """Сгенерировать непрозрачный refresh-токен (256 бит случайности, URL-safe base64)."""
+    return secrets.token_urlsafe(32)
+
+
+def hash_refresh_token(refresh_token: str) -> str:
+    """
+    Хеш refresh-токена для хранения в БД (SHA-256, hex).
+
+    Медленный хеш (argon2) не нужен: токен случайный и длинный, перебор по хешу бесполезен,
+    а детерминированный хеш позволяет искать токен по индексу.
+
+    Args:
+        refresh_token: Открытое значение токена.
+    """
+    return hashlib.sha256(refresh_token.encode()).hexdigest()
 
 
 _pwd_context = CryptContext(

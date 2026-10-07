@@ -17,9 +17,15 @@ class AppSettings(BaseSettings):
         description="Для проверки сборки.",
     )
 
+    # TODO(FM-16): нет нижней границы (ge=1): при 0 expires_in не проходит TokenSchema и /token отвечает 500,
+    # а при REFRESH_TOKEN_EXPIRE_DAYS <= 0 любой refresh сразу недействителен.
     ACCESS_TOKEN_EXPIRE_MINUTES: int = Field(
         30,
-        description="Время жизни токена.",
+        description="Время жизни access-токена в минутах.",
+    )
+    REFRESH_TOKEN_EXPIRE_DAYS: int = Field(
+        30,
+        description="Время жизни refresh-токена в днях.",
     )
     PRIVATE_KEY_PATH: str = Field(
         f"{SECRETS_DIR}/jwt_private_key",

@@ -13,7 +13,7 @@ from . import base
 # Значения этих полей не возвращаются в ответе об ошибке валидации.
 # TODO(FM-15): значения лишних полей (extra_forbidden) клиенту не нужны, но возвращаются — пароль под
 # чужим ключом (например, passwordConfirmation) уйдёт в rejectedValue; для extra_forbidden отдавать None.
-SENSITIVE_FIELDS = frozenset({"password", "password_confirmation"})
+SENSITIVE_FIELDS = frozenset({"password", "password_confirmation", "refresh_token"})
 
 
 class ValidationField(BaseModel):
