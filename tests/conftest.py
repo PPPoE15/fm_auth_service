@@ -91,6 +91,8 @@ class InMemoryUserRepo(UserRepoInterface):
         self._storage.pop(system_user.uid, None)
 
 
+# NOTE(FM-16): блокировка (FOR UPDATE) не моделируется — «из параллельных refresh проходит один» тестами не
+# покрыто; это проверяется вручную на Postgres (см. «Adapters stay thin» в CLAUDE.md).
 class InMemoryRefreshTokenRepo(RefreshTokenRepoInterface):
     """Репозиторий refresh-токенов в памяти."""
 

@@ -22,12 +22,15 @@ class RefreshTokenRepo(RefreshTokenRepoInterface, BaseSqlAlchemyRepo):
             select(orm_models.RefreshToken)
             .where(orm_models.RefreshToken.token_hash == token_hash)
             .with_for_update()
-            # После ожидания блокировки взять актуальную строку из БД, а не объект из identity map сессии.
+            # NOTE(FM-16): сейчас сессия на каждый UoW новая и populate_existing ничего не меняет; защита на случай,
+            # если токен уже окажется в identity map — после ожидания блокировки нужна строка из БД, а не кэш.
             .execution_options(populate_existing=True)
         )
         orm_refresh_token = await self._session.scalar(stmt)
         return builders.build(orm_refresh_token) if orm_refresh_token else None
 
+    # TODO(FM-16): merge делает лишний SELECT по uid (загруженный ORM-объект не удерживается сессией) — один
+    # запрос на каждый refresh/logout; можно обновлять UPDATE ... WHERE uid или держать объект до update.
     async def update(self, refresh_token: RefreshToken) -> None:
         await self._session.merge(builders.build_orm(refresh_token))
         await self._session.flush()
