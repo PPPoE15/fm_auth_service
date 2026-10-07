@@ -1,7 +1,5 @@
 import abc
-from datetime import datetime
 
-from apps import apps_types
 from apps.web.app.aggregators.models import RefreshToken
 
 
@@ -18,26 +16,22 @@ class RefreshTokenRepoInterface(abc.ABC):
         """
 
     @abc.abstractmethod
-    async def revoke_active(self, token_hash: str, now: datetime) -> RefreshToken | None:
+    async def get_by_hash_for_update(self, token_hash: str) -> RefreshToken | None:
         """
-        Атомарно отозвать действующий токен (не отозван и не истёк) и вернуть его (уже отозванным).
+        Получить токен по хешу, заблокировав его до конца транзакции.
 
-        Атомарность нужна для ротации: из двух параллельных запросов с одним токеном успешен только один.
+        Блокировка нужна для ротации: параллельный запрос с тем же токеном ждёт её снятия и видит токен
+        уже отозванным, поэтому из нескольких одновременных обновлений успешно только одно.
 
         Args:
             token_hash: Хеш открытого значения токена.
-            now: Текущий момент, с которым сравнивается срок действия.
-
-        Returns:
-            Отозванный токен или None, если действующего токена с таким хешем нет.
         """
 
     @abc.abstractmethod
-    async def revoke(self, token_hash: str, user_uid: apps_types.UserUID) -> None:
+    async def update(self, refresh_token: RefreshToken) -> None:
         """
-        Отозвать токен пользователя (идемпотентно: отозванный, истёкший или чужой токен — не ошибка).
+        Сохранить изменения токена.
 
         Args:
-            token_hash: Хеш открытого значения токена.
-            user_uid: Владелец токена; токен другого пользователя не отзывается.
+            refresh_token: Агрегатор refresh-токена.
         """

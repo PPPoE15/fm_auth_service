@@ -40,11 +40,13 @@ class RefreshTokenCommandHandler:
         # остаётся только отозванный токен, и повтор даёт FM-401002 — нужен повторный вход.
         msg = "Сессия истекла, войдите снова"
         async with self._uow as uow:
-            used_token = await uow.refresh_token_repo.revoke_active(hash_refresh_token(refresh_token), aware_now())
+            used_token = await uow.refresh_token_repo.get_by_hash_for_update(hash_refresh_token(refresh_token))
             # TODO(FM-16): повторное предъявление уже ротированного токена (признак кражи) не отзывает остальные
             # токены пользователя — нужна цепочка (family) и её отзыв целиком; контрактом не требуется.
-            if used_token is None:
+            if used_token is None or not used_token.is_active(aware_now()):
                 raise InvalidRefreshTokenError(msg)
+            used_token.revoke()
+            await uow.refresh_token_repo.update(used_token)
             user = await uow.user_repo.get_by_uid(used_token.user_uid)
             # NOTE(FM-16): в Postgres недостижимо — токены удаляются вместе с пользователем (ON DELETE CASCADE);
             # защитная проверка, в тестах покрыта только на репозитории в памяти.

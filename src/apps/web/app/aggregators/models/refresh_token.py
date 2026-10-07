@@ -55,3 +55,25 @@ class RefreshToken(Base):
             expires_at=expires_at,
             created_date=created_date,
         )
+
+    def is_active(self, now: datetime) -> bool:
+        """
+        Токен действителен: не отозван и срок действия не истёк.
+
+        Args:
+            now: Текущий момент.
+        """
+        return not self.revoked and now < self.expires_at
+
+    def belongs_to(self, user_uid: apps_types.UserUID) -> bool:
+        """
+        Токен выдан этому пользователю.
+
+        Args:
+            user_uid: Идентификатор пользователя.
+        """
+        return self.user_uid == user_uid
+
+    def revoke(self) -> None:
+        """Отозвать токен (идемпотентно)."""
+        self.revoked = True

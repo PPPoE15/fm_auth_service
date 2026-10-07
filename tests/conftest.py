@@ -1,5 +1,4 @@
 import os
-from datetime import datetime
 from pathlib import Path
 from typing import Any, Self
 from uuid import UUID
@@ -99,19 +98,15 @@ class InMemoryRefreshTokenRepo(RefreshTokenRepoInterface):
         self._storage = storage
 
     async def create(self, refresh_token: RefreshToken) -> None:
-        self._storage[refresh_token.uid] = refresh_token
+        self._storage[refresh_token.uid] = refresh_token.model_copy()
 
-    async def revoke_active(self, token_hash: str, now: datetime) -> RefreshToken | None:
-        for uid, token in self._storage.items():
-            if token.token_hash == token_hash and not token.revoked and token.expires_at > now:
-                self._storage[uid] = token.model_copy(update={"revoked": True})
-                return self._storage[uid]
-        return None
+    async def get_by_hash_for_update(self, token_hash: str) -> RefreshToken | None:
+        token = next((token for token in self._storage.values() if token.token_hash == token_hash), None)
+        # Копия, как строка из БД: изменения агрегата попадают в хранилище только через update.
+        return token.model_copy() if token else None
 
-    async def revoke(self, token_hash: str, user_uid: apps_types.UserUID) -> None:
-        for uid, token in self._storage.items():
-            if token.token_hash == token_hash and token.user_uid == user_uid:
-                self._storage[uid] = token.model_copy(update={"revoked": True})
+    async def update(self, refresh_token: RefreshToken) -> None:
+        self._storage[refresh_token.uid] = refresh_token.model_copy()
 
 
 # NOTE(FM-16): изменения применяются сразу и rollback их не отменяет, в отличие от Postgres: после ошибки внутри

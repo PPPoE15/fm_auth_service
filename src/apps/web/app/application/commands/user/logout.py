@@ -30,8 +30,11 @@ class LogoutCommandHandler:
             refresh_token: Открытое значение refresh-токена.
         """
         async with self._uow as uow:
-            await uow.refresh_token_repo.revoke(hash_refresh_token(refresh_token), user_uid)
+            token = await uow.refresh_token_repo.get_by_hash_for_update(hash_refresh_token(refresh_token))
+            if token is None or not token.belongs_to(user_uid) or token.revoked:
+                self._logger.info("Выход пользователя %s: токен не найден, чужой или уже отозван", user_uid)
+                return
+            token.revoke()
+            await uow.refresh_token_repo.update(token)
             await uow.commit()
-        # TODO(FM-16): пишется и когда ничего не отозвано (чужой/неизвестный токен) — для аудита возвращать из
-        # revoke число отозванных строк и логировать такие случаи отдельно.
         self._logger.info("Выход пользователя %s", user_uid)
