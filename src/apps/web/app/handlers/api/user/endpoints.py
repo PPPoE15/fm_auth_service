@@ -84,9 +84,9 @@ async def refresh_token_route_handler(
     return _token_response(await command_handler.handle(item_in.refresh_token))
 
 
-# NOTE(FM-17): выход требует действующий access-токен (контракт). Если клиент на 401 обновит пару и повторит
-# /logout со старым refresh, тот уже отозван ротацией — ответ 204, а новый refresh остаётся живым. При повторе
-# клиент должен подставлять в тело новый refresh-токен.
+# TODO(FM-22): выход требует действующий access-токен (контракт). Если клиент на 401 обновит пару и повторит
+# /logout со старым refresh, тот уже отозван ротацией — ответ 204, а новый refresh остаётся живым. Решение —
+# выход только по refresh-токену (security: [] в контракте).
 @router.post(
     "/logout",
     summary="Выход",
