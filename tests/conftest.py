@@ -1,7 +1,7 @@
 import os
+from collections.abc import Iterator
 from pathlib import Path
-from typing import Any, Self
-from uuid import UUID
+from typing import Any
 
 import pytest
 from cryptography.hazmat.primitives import serialization
@@ -17,14 +17,16 @@ for _name, _value in {
 }.items():
     os.environ.setdefault(_name, _value)
 
-from apps import apps_types  # noqa: E402
-from apps.config import app_settings  # noqa: E402
-from apps.web.app.aggregators.models import RefreshToken, User  # noqa: E402
-from apps.web.app.application.commands.user.uow import AbstractUserUnitOfWork  # noqa: E402
-from apps.web.app.infrastructure.db.repos.refresh_tokens import RefreshTokenRepoInterface  # noqa: E402
-from apps.web.app.infrastructure.db.repos.users import EmailAlreadyTakenError, UserRepoInterface  # noqa: E402
+from fastapi import Depends, FastAPI  # noqa: E402
+from fastapi.testclient import TestClient  # noqa: E402
 
-RefreshTokensStorage = dict[UUID, RefreshToken]
+from apps.config import app_settings  # noqa: E402
+from apps.modules.session.api import deps as session_deps  # noqa: E402
+from apps.modules.user.api import deps as user_deps  # noqa: E402
+from apps.web.main import build_app  # noqa: E402
+from apps.web.security import UserInfo, get_user_info  # noqa: E402
+from tests.modules.session.fakes import InMemorySessionUnitOfWork, RefreshTokensStorage  # noqa: E402
+from tests.modules.user.fakes import InMemoryUserUnitOfWork, UsersStorage  # noqa: E402
 
 
 def generate_rsa_pem_pair() -> tuple[bytes, bytes]:
@@ -66,80 +68,8 @@ def signing_keys(
     return rsa_key_pair
 
 
-class InMemoryUserRepo(UserRepoInterface):
-    """Репозиторий пользователей в памяти."""
-
-    def __init__(self, storage: dict[apps_types.UserUID, User]) -> None:
-        self._storage = storage
-
-    async def create(self, system_user: User) -> None:
-        # Как уникальный индекс users.email в БД.
-        if any(user.email == system_user.email for user in self._storage.values()):
-            raise EmailAlreadyTakenError
-        self._storage[system_user.uid] = system_user
-
-    async def update(self, system_user: User) -> None:
-        self._storage[system_user.uid] = system_user
-
-    async def get_by_email(self, email: apps_types.Email) -> User | None:
-        return next((user for user in self._storage.values() if user.email == email), None)
-
-    async def get_by_uid(self, uid: apps_types.UserUID) -> User | None:
-        return self._storage.get(uid)
-
-    async def delete(self, system_user: User) -> None:
-        self._storage.pop(system_user.uid, None)
-
-
-# NOTE(FM-16): блокировка (FOR UPDATE) не моделируется — «из параллельных refresh проходит один» тестами не
-# покрыто; это проверяется вручную на Postgres (см. «Adapters stay thin» в CLAUDE.md).
-class InMemoryRefreshTokenRepo(RefreshTokenRepoInterface):
-    """Репозиторий refresh-токенов в памяти."""
-
-    def __init__(self, storage: RefreshTokensStorage) -> None:
-        self._storage = storage
-
-    async def create(self, refresh_token: RefreshToken) -> None:
-        self._storage[refresh_token.uid] = refresh_token.model_copy()
-
-    async def get_by_hash_for_update(self, token_hash: str) -> RefreshToken | None:
-        token = next((token for token in self._storage.values() if token.token_hash == token_hash), None)
-        # Копия, как строка из БД: изменения агрегата попадают в хранилище только через update.
-        return token.model_copy() if token else None
-
-    async def update(self, refresh_token: RefreshToken) -> None:
-        self._storage[refresh_token.uid] = refresh_token.model_copy()
-
-
-# NOTE(FM-16): изменения применяются сразу и rollback их не отменяет, в отличие от Postgres: после ошибки внутри
-# UoW (например, refresh удалённого пользователя) состояние хранилища не совпадает с продовым.
-class InMemoryUserUnitOfWork(AbstractUserUnitOfWork):
-    """Единица работы поверх общего хранилища в памяти (изменения видны сразу)."""
-
-    def __init__(
-        self,
-        storage: dict[apps_types.UserUID, User],
-        refresh_tokens_storage: RefreshTokensStorage | None = None,
-        **_: Any,
-    ) -> None:
-        self._storage = storage
-        self._refresh_tokens_storage = {} if refresh_tokens_storage is None else refresh_tokens_storage
-        self.committed = False
-
-    async def __aenter__(self) -> Self:
-        self.user_repo = InMemoryUserRepo(self._storage)
-        self.refresh_token_repo = InMemoryRefreshTokenRepo(self._refresh_tokens_storage)
-        return self
-
-    async def rollback(self) -> None:
-        """Откат в памяти не нужен."""
-
-    async def commit(self) -> None:
-        self.committed = True
-
-
 @pytest.fixture
-def users_storage() -> dict[apps_types.UserUID, User]:
+def users_storage() -> UsersStorage:
     """Хранилище пользователей одного теста."""
     return {}
 
@@ -152,8 +82,37 @@ def refresh_tokens_storage() -> RefreshTokensStorage:
 
 @pytest.fixture
 def uow(
-    users_storage: dict[apps_types.UserUID, User],
+    users_storage: UsersStorage,
     refresh_tokens_storage: RefreshTokensStorage,
-) -> InMemoryUserUnitOfWork:
-    """Единица работы в памяти."""
-    return InMemoryUserUnitOfWork(users_storage, refresh_tokens_storage)
+) -> InMemorySessionUnitOfWork:
+    """Единица работы в памяти (модуля сессии — она видит и пользователей, и refresh-токены)."""
+    return InMemorySessionUnitOfWork(users_storage, refresh_tokens_storage)
+
+
+@pytest.fixture
+def app(
+    users_storage: UsersStorage,
+    refresh_tokens_storage: RefreshTokensStorage,
+    monkeypatch: pytest.MonkeyPatch,
+) -> FastAPI:
+    """Приложение сервиса с хранилищами в памяти и тестовым защищённым эндпоинтом."""
+    # Модули пользователя и сессии работают с одним хранилищем пользователей, как с одной таблицей users.
+    monkeypatch.setattr(user_deps, "UserUnitOfWork", lambda **_: InMemoryUserUnitOfWork(users_storage))
+    monkeypatch.setattr(
+        session_deps,
+        "SessionUnitOfWork",
+        lambda **_: InMemorySessionUnitOfWork(users_storage, refresh_tokens_storage),
+    )
+    fastapi_app = build_app()
+
+    @fastapi_app.get("/test/protected")
+    async def protected(user_info: UserInfo = Depends(get_user_info)) -> dict[str, Any]:
+        return {"uid": str(user_info.uid)}
+
+    return fastapi_app
+
+
+@pytest.fixture
+def client(app: FastAPI) -> Iterator[TestClient]:
+    with TestClient(app) as test_client:
+        yield test_client

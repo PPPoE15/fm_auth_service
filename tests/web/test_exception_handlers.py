@@ -2,7 +2,7 @@ import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from apps.web.app.utils.exceptions import (
+from apps.shared.exceptions import (
     BaseBadRequestError,
     BaseConflictError,
     BaseError,
