@@ -31,6 +31,8 @@ class InMemoryRefreshTokenRepo(RefreshTokenRepoInterface):
         self._storage[refresh_token.uid] = refresh_token.model_copy()
 
 
+# TODO(FM-24): commit/rollback и InMemoryUserRepo повторяют InMemoryUserUnitOfWork из tests/modules/user/fakes.py —
+# при правке поведения фейков (или их пересмотре в FM-24) унаследовать от него и добавить только refresh_token_repo.
 # NOTE(FM-16): изменения применяются сразу и rollback их не отменяет, в отличие от Postgres: после ошибки внутри
 # UoW (например, refresh удалённого пользователя) состояние хранилища не совпадает с продовым.
 class InMemorySessionUnitOfWork(AbstractSessionUnitOfWork):

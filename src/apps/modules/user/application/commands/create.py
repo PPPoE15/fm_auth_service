@@ -54,7 +54,8 @@ class CreateUserCommandHandler:
                 raise exceptions.UserAlreadyExistsError(already_exists_msg)
 
             # TODO(FM-20): argon2 считается при открытой транзакции и занятом соединении из пула; при выносе
-            # хеширования в поток (см. TODO в authenticate.py) хешировать до входа в UoW.
+            # хеширования в поток (см. TODO в modules/session/application/commands/authenticate.py) хешировать
+            # до входа в UoW.
             user_agg = User.create(
                 name=name,
                 password_hash=hash_password(password),

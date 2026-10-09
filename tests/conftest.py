@@ -80,6 +80,8 @@ def refresh_tokens_storage() -> RefreshTokensStorage:
     return {}
 
 
+# TODO(FM-29): фикстуру не запрашивает ни один тест (так было и до переноса); при юнит-тестах команд модулей
+# завести свою фикстуру в tests/modules/<module>/, а эту удалить — здесь UoW модуля сессии, а не пользователя.
 @pytest.fixture
 def uow(
     users_storage: UsersStorage,
