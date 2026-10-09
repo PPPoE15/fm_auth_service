@@ -12,7 +12,7 @@ from starlette.status import (
 if TYPE_CHECKING:
     from fastapi import FastAPI, Request
 
-    from apps.web.app.utils.exceptions import BaseError
+    from apps.shared.exceptions import BaseError
 
 logger = logging.getLogger("default")
 
