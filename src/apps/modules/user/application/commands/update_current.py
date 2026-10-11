@@ -31,6 +31,8 @@ class UpdateCurrentUserCommandHandler:
         """
         async with self._uow as uow:
             user = await uow.user_repo.get_by_uid(uid)
+            # TODO(FM-38): загрузка «пользователь из токена или 401» и текст ошибки повторяют
+            # GetCurrentUserQueryHandler; при следующем таком обработчике вынести в общий хелпер.
             if user is None:
                 msg = "Не авторизованный запрос!"
                 raise CurrentUserNotFoundError(msg)

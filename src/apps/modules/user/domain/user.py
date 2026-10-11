@@ -55,6 +55,9 @@ class User(Base):
             created_date=created_date,
         )
 
+    # TODO(FM-38): правила имени (обрезка, 1–64 символа, без управляющих символов, не None) проверяет только
+    # API-схема (UserNameField); у Base нет validate_assignment. Перенести проверку в агрегат, когда появится
+    # второй путь записи имени (как и для User.create).
     def rename(self, name: apps_types.UserName) -> None:
         """
         Задать или сменить имя пользователя.

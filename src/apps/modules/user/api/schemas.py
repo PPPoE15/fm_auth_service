@@ -23,6 +23,8 @@ class CreateUserSchema(RequestBase):
         description="Повторение пароля.",
     )
 
+    # NOTE(FM-38): из-за `| None` сгенерированный /openapi.json описывает name как anyOf string/null, хотя явный
+    # null отклоняется (контракт: необязательная строка, не nullable). Клиенты пишутся по контракту из fm-auto-dev.
     @field_validator("name", mode="before")
     @classmethod
     def _reject_explicit_null(cls, value: object) -> object:
