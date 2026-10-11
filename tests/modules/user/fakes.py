@@ -28,6 +28,8 @@ class InMemoryUserRepo(UserRepoInterface):
     async def get_by_email(self, email: apps_types.Email) -> User | None:
         return next((user for user in self._storage.values() if user.email == email), None)
 
+    # TODO(FM-24): отдаёт сам объект из хранилища, поэтому изменение агрегата видно без update/commit — тесты
+    # PATCH /me не поймают пропущенный `user_repo.update` или `commit`. Решится тестами на Postgres.
     async def get_by_uid(self, uid: apps_types.UserUID) -> User | None:
         return self._storage.get(uid)
 

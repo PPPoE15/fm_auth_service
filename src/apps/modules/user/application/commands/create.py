@@ -26,7 +26,7 @@ class CreateUserCommandHandler:
 
     async def handle(
         self,
-        name: apps_types.UserName,
+        name: apps_types.UserName | None,
         email: apps_types.Email,
         password: apps_types.Password,
         password_confirmation: apps_types.Password,
@@ -35,7 +35,7 @@ class CreateUserCommandHandler:
         Создать пользователя.
 
         Args:
-            name: Как обращаться к пользователю.
+            name: Как обращаться к пользователю; None — не указано (задаётся позже через PATCH /me).
             email: Email пользователя (нормализованный: нижний регистр, без пробелов по краям).
             password: Пароль.
             password_confirmation: Подтверждение пароля.

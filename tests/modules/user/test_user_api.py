@@ -167,7 +167,29 @@ def test_registration_accepts_boundary_lengths(client: TestClient) -> None:
     assert response.status_code == 201
 
 
-@pytest.mark.parametrize("missing", ["name", "email", "password", "password_confirmation"])
+def test_registration_without_name_creates_user_with_null_name(
+    client: TestClient,
+    users_storage: dict[apps_types.UserUID, User],
+) -> None:
+    body = _registration_body()
+    del body["name"]
+
+    response = client.post("/auth/registration", json=body)
+
+    assert response.status_code == 201
+    [user] = users_storage.values()
+    assert response.json() == {"uid": str(user.uid), "name": None, "email": EMAIL}
+    assert user.name is None
+
+
+def test_registration_rejects_null_name(client: TestClient) -> None:
+    response = _register(client, name=None)
+
+    assert response.status_code == 422
+    assert "name" in _validation_fields(response)
+
+
+@pytest.mark.parametrize("missing", ["email", "password", "password_confirmation"])
 def test_registration_requires_all_fields(client: TestClient, missing: str) -> None:
     body = _registration_body()
     del body[missing]
@@ -294,6 +316,18 @@ def test_me_returns_current_user(client: TestClient, users_storage: dict[apps_ty
     assert response.json() == {"uid": str(user.uid), "name": NAME, "email": EMAIL}
 
 
+def test_me_of_user_without_name_returns_null_name(client: TestClient) -> None:
+    body = _registration_body()
+    del body["name"]
+    client.post("/auth/registration", json=body)
+    token = _login(client).json()["access_token"]
+
+    response = client.get("/auth/me", headers=_auth(token))
+
+    assert response.status_code == 200
+    assert response.json()["name"] is None
+
+
 def test_me_without_token_is_rejected(client: TestClient) -> None:
     response = client.get("/auth/me")
 
@@ -336,6 +370,113 @@ def test_me_of_deleted_user_is_rejected(client: TestClient, users_storage: dict[
 
     assert response.status_code == 401
     assert response.json()["code"] == "FM-401000"
+
+
+# --- Изменение профиля ---
+
+
+def _patch_me(client: TestClient, token: str, body: dict[str, Any]) -> Response:
+    return client.patch("/auth/me", headers=_auth(token), json=body)
+
+
+def _register_without_name_and_login(client: TestClient) -> str:
+    body = _registration_body()
+    del body["name"]
+    client.post("/auth/registration", json=body)
+    return str(_login(client).json()["access_token"])
+
+
+def test_patch_me_sets_name(client: TestClient, users_storage: dict[apps_types.UserUID, User]) -> None:
+    token = _register_without_name_and_login(client)
+
+    response = _patch_me(client, token, {"name": "  Артём  "})
+
+    assert response.status_code == 200
+    [user] = users_storage.values()
+    assert response.json() == {"uid": str(user.uid), "name": "Артём", "email": EMAIL}
+    assert client.get("/auth/me", headers=_auth(token)).json()["name"] == "Артём"
+
+
+def test_patch_me_changes_existing_name(client: TestClient) -> None:
+    _register(client)
+    token = _login(client).json()["access_token"]
+
+    response = _patch_me(client, token, {"name": "Другое имя"})
+
+    assert response.status_code == 200
+    assert response.json()["name"] == "Другое имя"
+
+
+def test_patch_me_accepts_name_of_64_chars(client: TestClient) -> None:
+    token = _register_without_name_and_login(client)
+
+    assert _patch_me(client, token, {"name": "я" * 64}).status_code == 200
+
+
+@pytest.mark.parametrize(
+    "body",
+    [
+        {"name": None},
+        {"name": ""},
+        {"name": "   "},
+        {"name": "я" * 65},
+        {"name": "Ар\x00тём"},
+        {"name": 123},
+    ],
+)
+def test_patch_me_rejects_invalid_name(
+    client: TestClient,
+    users_storage: dict[apps_types.UserUID, User],
+    body: dict[str, Any],
+) -> None:
+    token = _register_without_name_and_login(client)
+
+    response = _patch_me(client, token, body)
+
+    assert response.status_code == 422
+    assert response.json()["code"] == "FM-422000"
+    assert "name" in _validation_fields(response)
+    [user] = users_storage.values()
+    assert user.name is None
+
+
+def test_patch_me_requires_name(client: TestClient) -> None:
+    token = _register_without_name_and_login(client)
+
+    response = _patch_me(client, token, {})
+
+    assert response.status_code == 422
+    assert "name" in _validation_fields(response)
+
+
+def test_patch_me_rejects_unknown_fields(client: TestClient) -> None:
+    token = _register_without_name_and_login(client)
+
+    response = _patch_me(client, token, {"name": "Артём", "email": "other@example.com"})
+
+    assert response.status_code == 422
+    assert "email" in _validation_fields(response)
+
+
+def test_patch_me_without_token_is_rejected(client: TestClient) -> None:
+    response = client.patch("/auth/me", json={"name": "Артём"})
+
+    assert response.status_code == 401
+    assert response.json()["code"] == "FM-401000"
+
+
+def test_patch_me_of_deleted_user_is_rejected(
+    client: TestClient,
+    users_storage: dict[apps_types.UserUID, User],
+) -> None:
+    token = _register_without_name_and_login(client)
+    users_storage.clear()
+
+    response = _patch_me(client, token, {"name": "Артём"})
+
+    assert response.status_code == 401
+    assert response.json()["code"] == "FM-401000"
+    assert users_storage == {}
 
 
 # --- Проверка токена ---

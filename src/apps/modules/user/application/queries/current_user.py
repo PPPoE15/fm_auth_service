@@ -1,15 +1,10 @@
+from apps.modules.user.application.exceptions import CurrentUserNotFoundError
 from apps.modules.user.application.uow import AbstractUserUnitOfWork
 from apps.modules.user.domain import User
 from apps.shared import apps_types
-from apps.shared.exceptions import BaseUnauthorizedError
 
 
-# NOTE(FM-15): отвечает так же, как InvalidTokenError (401, FM-401000) — для клиента это недействительная
-# сессия. Обработчик запроса берёт AbstractUserUnitOfWork, как команды: отдельной read-модели пока нет.
-class CurrentUserNotFoundError(BaseUnauthorizedError):
-    """Пользователь из действительного токена не найден (например, удалён)."""
-
-
+# NOTE(FM-15): обработчик запроса берёт AbstractUserUnitOfWork, как команды: отдельной read-модели пока нет.
 class GetCurrentUserQueryHandler:
     """Обработчик запроса данных текущего пользователя."""
 

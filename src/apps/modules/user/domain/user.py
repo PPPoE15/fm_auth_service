@@ -14,8 +14,8 @@ class User(Base):
     uid: apps_types.UserUID = Field(
         description="Уникальный ID записи пользователя.",
     )
-    name: apps_types.UserName = Field(
-        description="Как обращаться к пользователю (не уникально).",
+    name: apps_types.UserName | None = Field(
+        description="Как обращаться к пользователю (не уникально); None — имя ещё не задано.",
     )
     password_hash: apps_types.PasswordHash = Field(
         description="Хэш пароля.",
@@ -32,7 +32,7 @@ class User(Base):
     @classmethod
     def create(
         cls,
-        name: apps_types.UserName,
+        name: apps_types.UserName | None,
         password_hash: apps_types.PasswordHash,
         email: apps_types.Email,
         created_date: datetime,
@@ -41,7 +41,7 @@ class User(Base):
         Создать пользователя.
 
         Args:
-            name: Как обращаться к пользователю.
+            name: Как обращаться к пользователю; None — имя не задано при регистрации.
             password_hash: Хэш пароля.
             email: Email пользователя.
             created_date: Дата создания пользователя.
@@ -54,3 +54,17 @@ class User(Base):
             email=email,
             created_date=created_date,
         )
+
+    # TODO(FM-38): правила имени (обрезка, 1–64 символа, без управляющих символов, не None) проверяет только
+    # API-схема (UserNameField); у Base нет validate_assignment. Перенести проверку в агрегат, когда появится
+    # второй путь записи имени (как и для User.create).
+    def rename(self, name: apps_types.UserName) -> None:
+        """
+        Задать или сменить имя пользователя.
+
+        Сбросить имя обратно в None нельзя: после окна «Первый шаг» оно всегда задано.
+
+        Args:
+            name: Как обращаться к пользователю.
+        """
+        self.name = name
