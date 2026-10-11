@@ -10,9 +10,9 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from passlib.context import CryptContext
 from pydantic import BaseModel, Field, ValidationError
 
-from apps import apps_types
 from apps.config import app_settings
-from apps.web.app.utils.exceptions import BaseUnauthorizedError
+from apps.shared import apps_types
+from apps.shared.exceptions import BaseUnauthorizedError
 
 _security_token = HTTPBearer(auto_error=False)
 

@@ -6,7 +6,7 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 from starlette import status
 
-from apps.web.app.utils.exceptions import BaseCustomValidationError
+from apps.shared.exceptions import BaseCustomValidationError
 
 from . import base
 

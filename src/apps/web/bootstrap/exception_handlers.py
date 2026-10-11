@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 
-from apps.web.app.utils.exceptions import (
+from apps.shared.exceptions import (
     BaseBadRequestError,
     BaseConflictError,
     BaseForbiddenError,
