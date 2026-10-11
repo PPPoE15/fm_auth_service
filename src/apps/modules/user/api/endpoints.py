@@ -36,7 +36,7 @@ async def create_user(
 @router.get(
     "/me",
     summary="Текущий пользователь",
-    description="Имя для приветствия и блока пользователя в боковом меню.",
+    description="Имя для приветствия и блока пользователя; null — имя ещё не задано.",
 )
 async def get_current_user(
     user_info: Annotated[UserInfo, Depends(get_user_info)],
@@ -49,4 +49,25 @@ async def get_current_user(
     """
     query_handler = deps.build_current_user_query_handler()
     user = await query_handler.handle(user_info.uid)
+    return schemas.UserSchema.model_validate(user)
+
+
+@router.patch(
+    "/me",
+    summary="Изменение профиля",
+    description="Окно «Первый шаг»: задать имя. Сбросить имя в null нельзя.",
+)
+async def update_current_user(
+    item_in: schemas.UpdateCurrentUserSchema,
+    user_info: Annotated[UserInfo, Depends(get_user_info)],
+) -> schemas.UserSchema:
+    """
+    Изменить данные текущего пользователя.
+
+    Args:
+        item_in: Новые данные профиля.
+        user_info: Информация о пользователе из токена.
+    """
+    command_handler = deps.build_update_current_user_command_handler()
+    user = await command_handler.handle(uid=user_info.uid, name=item_in.name)
     return schemas.UserSchema.model_validate(user)

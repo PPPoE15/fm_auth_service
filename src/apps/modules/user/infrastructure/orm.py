@@ -18,9 +18,10 @@ class User(AsyncBase):
         primary_key=True,
         doc="Уникальный ID записи пользователя.",
     )
-    name: Mapped[apps_types.UserName] = mapped_column(
+    name: Mapped[apps_types.UserName | None] = mapped_column(
         String(64),
-        doc="Как обращаться к пользователю (не уникально).",
+        nullable=True,
+        doc="Как обращаться к пользователю (не уникально); NULL — имя ещё не задано.",
     )
     password_hash: Mapped[apps_types.PasswordHash] = mapped_column(
         String,

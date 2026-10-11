@@ -1,6 +1,5 @@
-from .current_user import CurrentUserNotFoundError, GetCurrentUserQueryHandler
+from .current_user import GetCurrentUserQueryHandler
 
 __all__ = [
-    "CurrentUserNotFoundError",
     "GetCurrentUserQueryHandler",
 ]

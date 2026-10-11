@@ -1,4 +1,4 @@
-from apps.shared.exceptions import BaseConflictError, BaseCustomValidationError
+from apps.shared.exceptions import BaseConflictError, BaseCustomValidationError, BaseUnauthorizedError
 
 
 class UserAlreadyExistsError(BaseConflictError):
@@ -12,3 +12,9 @@ class PasswordConfirmationError(BaseCustomValidationError):
 
     code = "FM-400001"
     field = "password_confirmation"
+
+
+# NOTE(FM-15): отвечает так же, как InvalidTokenError (401, FM-401000) — для клиента это недействительная
+# сессия.
+class CurrentUserNotFoundError(BaseUnauthorizedError):
+    """Пользователь из действительного токена не найден (например, удалён)."""
