@@ -49,3 +49,15 @@ checkout нужного SHA, выдачу digest и уникальность в�
 новый version, а прежний digest должен остаться доступным. Негативные сценарии
 на реальном Actions проверяются в отдельном тестовом репозитории с отдельными
 секретами, чтобы не ломать обязательные проверки рабочих веток.
+
+## SSH deployment (FM-66)
+
+После успешной публикации workflow передаёт digest серверному контроллеру fm_devops
+через SSH. Push в dev/master использует соответствующий GitHub Environment.
+Master требует required reviewer в настройках окружения.
+Подготовка SSH, environment secrets и процедура восстановления:
+[fm_devops deployment guide](https://github.com/PPPoE15/fm_devops/blob/dev/docs/deployment.md).
+На сервере должен быть установлен контроллер FM-66 и выполнен bootstrap.
+Повторять неудачный деплой через Re-run failed jobs, сохраняя digest успешной публикации.
+SSH-клиент и тесты синхронны в трёх репозиториях: scripts/deploy-ssh.py,
+scripts/tests/test_deploy_ssh.py. Проверка: python3 -m unittest discover -s scripts/tests -p test_deploy_ssh.py -v.

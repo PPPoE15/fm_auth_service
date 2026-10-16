@@ -36,6 +36,9 @@ jobs:
     - name: Mypy
       run: poetry run mypy --config-file=pyproject.toml src/
 
+    - name: Test SSH deployment client
+      run: python3 -m unittest discover -s scripts/tests -p test_deploy_ssh.py -v
+
     - name: Pytest
       run: poetry run pytest
       env:
@@ -51,7 +54,7 @@ jobs:
       sha: ${{ github.sha }}
       environment: ${{ github.ref_name }}
     env:
-      IMAGE: ${{ secrets.DOCKERHUB_USERNAME }}/${{ github.event.repository.name }}
+      IMAGE: ${{ vars.DOCKERHUB_USERNAME || 'pppoe15' }}/${{ github.event.repository.name }}
     steps:
     - uses: actions/checkout@v4
       with:
@@ -67,7 +70,7 @@ jobs:
     - name: Log in to Docker Hub
       uses: docker/login-action@v3
       with:
-        username: ${{ secrets.DOCKERHUB_USERNAME }}
+        username: ${{ vars.DOCKERHUB_USERNAME || 'pppoe15' }}
         password: ${{ secrets.DOCKERHUB_TOKEN }}
 
     - name: Build and publish checked commit
@@ -105,3 +108,27 @@ jobs:
         name: image-metadata-${{ github.ref_name }}-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
         path: image-metadata.json
         if-no-files-found: error
+
+  deploy:
+    needs: build-and-push
+    if: ${{ success() && github.event_name == 'push' && (github.ref_name == 'dev' || github.ref_name == 'master') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    environment: ${{ github.ref_name }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Deploy published digest over verified SSH
+        env:
+          DEPLOY_ENVIRONMENT: ${{ github.ref_name }}
+          DEPLOY_COMPONENT: auth
+          DEPLOY_IMAGE: ${{ needs.build-and-push.outputs.image_ref }}
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_PORT: ${{ secrets.DEPLOY_PORT }}
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+          DEPLOY_ROOT: ${{ secrets.DEPLOY_ROOT }}
+          DEPLOY_KEY: ${{ secrets.DEPLOY_KEY }}
+          DEPLOY_KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+        run: python3 scripts/deploy-ssh.py
