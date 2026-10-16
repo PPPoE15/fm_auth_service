@@ -148,6 +148,7 @@ debugpy = "^1.8.17"
 pytest = {extras = ["pytest-asyncio"], version = "^8.4.2"}
 pytest-asyncio = "^1.2.0"
 httpx = "^0.28.1"
+pyyaml = ">=6.0,<7.0"
 
 [tool.poetry]
 package-mode = false
