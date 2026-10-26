@@ -45,6 +45,9 @@ jobs:
     needs: [lint-and-test]
     if: ${{ success() && github.event_name == 'push' }}
     runs-on: ubuntu-latest
+    concurrency:
+      group: publish-${{ github.repository }}-${{ github.ref_name }}
+      cancel-in-progress: false
     outputs:
       digest: ${{ steps.build.outputs.digest }}
       image_ref: ${{ steps.record.outputs.image_ref }}
@@ -81,9 +84,18 @@ jobs:
         push: true
         tags: |
           ${{ steps.version.outputs.image }}
-          ${{ env.IMAGE }}:${{ github.ref_name }}
         labels: |
           org.opencontainers.image.revision=${{ github.sha }}
+
+    - name: Update branch tag from published digest
+      id: branch-alias
+      env:
+        DIGEST: ${{ steps.build.outputs.digest }}
+      run: |
+        set -euo pipefail
+        [[ "$DIGEST" =~ ^sha256:[0-9a-f]{64}$ ]]
+        docker buildx imagetools create --prefer-index=false --tag "${IMAGE}:${GITHUB_REF_NAME}" "${IMAGE}@${DIGEST}"
+        printf 'Обновлён тег %s:%s -> %s\n' "$IMAGE" "$GITHUB_REF_NAME" "$DIGEST"
 
     - name: Record deployment coordinates
       id: record
