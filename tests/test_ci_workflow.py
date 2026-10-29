@@ -16,10 +16,11 @@ def workflow() -> dict:
 
 
 def test_publication_requires_all_checks_in_same_run() -> None:
+    """Не публиковать образ без успешных тестов и проверки runtime этого запуска."""
     config = workflow()
     jobs = config["jobs"]
     publish = jobs["build-and-push"]
-    assert publish["needs"] == ["lint-and-test"]
+    assert publish["needs"] == ["lint-and-test", "container-check"]
     assert publish["if"] == "${{ success() && github.event_name == 'push' }}"
     checks = jobs["lint-and-test"]
     assert "if" not in checks
