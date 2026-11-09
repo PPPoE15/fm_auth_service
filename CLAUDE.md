@@ -44,7 +44,7 @@ make gen_requirements
 
 Type checking / linting config lives entirely in `pyproject.toml` under `[tool.ruff]` and `[tool.mypy]`: `ruff.lint.select = ["ALL"]` with an explicit ignore list, line length 120, and mypy runs with `disallow_untyped_defs = true`. `tests/*` and `src/migrations/*` get relaxed per-file ignores.
 
-There is no local Postgres/docker-compose in this repo (it's referenced by the Makefile but the `docker/` directory isn't checked in here) — DB connectivity commands assume the surrounding deployment repo/environment provides `docker-compose-dev-team.yaml`, etc. When developing locally without that, point `DB_*` env vars (see `template.env`) at any reachable Postgres instance.
+Локальный Compose находится в `docker/docker-compose.yml`; общий стек — в `fm_devops`. Для команд, ссылающихся на внешние Compose-файлы, используйте соответствующее окружение или задайте DB_* из template.env для доступного Postgres.
 
 ## Architecture
 
@@ -93,3 +93,18 @@ openssl pkey -in jwt_private_key -pubout -out jwt_public_key
 - Sessions (FM-16): `POST /token` and `POST /token/refresh` return `TokenPair` `{access_token, refresh_token, token_type, expires_in}` (`expires_in` = `ACCESS_TOKEN_EXPIRE_MINUTES` in seconds). The refresh token is opaque (`secrets.token_urlsafe(32)`, not a JWT); the `refresh_tokens` table stores only its SHA-256 (`hash_refresh_token`) plus `user_uid` (FK, `ON DELETE CASCADE`), `expires_at` (`REFRESH_TOKEN_EXPIRE_DAYS`) and `revoked`. Issuing lives in `modules/session/application/tokens.py` (`TokenIssuer`, used by login and refresh). `POST /token/refresh` rotates: the handler loads the token with `RefreshTokenRepo.get_by_hash_for_update` (`SELECT … FOR UPDATE`), checks `RefreshToken.is_active(now)`, calls `revoke()` and saves it, so of concurrent requests with one token only one wins (the others wait for the lock and see it revoked); unknown/expired/revoked token or deleted user → 401 `FM-401002`. `POST /logout` (needs the access token) revokes the refresh token only if it belongs to the caller (`RefreshToken.belongs_to`) and always answers 204 (repeated, unknown or foreign token included); the access token stays valid until `exp`. `refresh_token` is in `SENSITIVE_FIELDS` (never echoed in 422). Revoked/expired rows are not purged yet.
 
 For a local run outside Docker, point `PRIVATE_KEY_PATH` / `PUBLIC_KEY_PATH` at those files via environment variables (`uvicorn_up.sh` regenerates `dev.env` from `template.env`, and env vars take precedence over the env file).
+
+
+## Контейнеры (FM-67)
+
+Оба Dockerfile используют общие стадии Python 3.13 slim-bookworm; CI сравнивает
+весь текст, кроме последней строки default. Default корневого файла — master,
+локального — development-env. Рабочие каталоги и build args сохранены.
+Poetry живёт в отдельном /opt/poetry в builder; runtime получает только venv.
+Master устанавливает группу common, dev — все группы и копирует tests/.github
+для запуска штатных тестов. pyproject.toml/poetry.lock доступны в обеих целях.
+Компиляторов/Poetry/libpq5 в runtime нет; curl/gettext-base/tzdata сохранены.
+Кэши pip отключены, apt lists очищаются в том же слое. Не обновляйте lock ради
+сборки без отдельного решения; нынешние зависимости устанавливаются из wheels.
+CI собирает targets/default/custom VIRTUAL_ENV и проверяет runtime перед
+публикацией. Команды, размеры, digest баз и smoke — docs/container-images.md.
