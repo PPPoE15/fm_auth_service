@@ -1,6 +1,7 @@
 """Контракт CI/CD: зависимости, изоляция PR и версии публикуемых образов."""
 
 import os
+import shutil
 import subprocess
 from pathlib import Path
 
@@ -15,10 +16,11 @@ def workflow() -> dict:
 
 
 def test_publication_requires_all_checks_in_same_run() -> None:
+    """Не публиковать образ без успешных тестов и проверки runtime этого запуска."""
     config = workflow()
     jobs = config["jobs"]
     publish = jobs["build-and-push"]
-    assert publish["needs"] == ["lint-and-test"]
+    assert publish["needs"] == ["lint-and-test", "container-check"]
     assert publish["if"] == "${{ success() && github.event_name == 'push' }}"
     checks = jobs["lint-and-test"]
     assert "if" not in checks
@@ -78,3 +80,40 @@ def test_versions_separate_targets_and_reruns(tmp_path: Path, target: str) -> No
         assert values["image"] == f"example/fm_auth_service:{'a' * 40}-{target}-123-{attempt}"
         versions.append(values["image"])
     assert len(set(versions)) == 2
+
+
+@pytest.mark.parametrize("target", ["dev", "master"])
+@pytest.mark.parametrize("exit_code", [0, 1])
+def test_branch_alias_uses_published_digest(tmp_path: Path, target: str, exit_code: int) -> None:
+    """Тег ветки получает опубликованный digest, ошибка Docker останавливает шаг."""
+    steps = workflow()["jobs"]["build-and-push"]["steps"]
+    alias = next(step for step in steps if step.get("id") == "branch-alias")
+    step_ids = [step.get("id") for step in steps]
+    assert step_ids.index("build") < step_ids.index("branch-alias") < step_ids.index("record")
+    assert alias["env"]["DIGEST"] == "${{ steps.build.outputs.digest }}"
+    docker = tmp_path / "docker"
+    docker.write_text('#!/bin/bash\nprintf "%s\\n" "$*" > "$CALLS"\nexit "$EXIT_CODE"\n')
+    docker.chmod(0o755)
+    env = {
+        **os.environ,
+        "PATH": f"{tmp_path}:{os.environ['PATH']}",
+        "IMAGE": "example/fm_auth_service",
+        "DIGEST": "sha256:" + "b" * 64,
+        "GITHUB_REF_NAME": target,
+        "CALLS": str(tmp_path / "calls"),
+        "EXIT_CODE": str(exit_code),
+    }
+    bash = shutil.which("bash")
+    assert bash is not None
+    result = subprocess.run(  # noqa: S603 — шаг workflow с подменённым Docker, без доступа к реестру.
+        [bash, "-c", alias["run"]],
+        env=env,
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    assert result.returncode == exit_code
+    assert (tmp_path / "calls").read_text().strip() == (
+        f"buildx imagetools create --prefer-index=false --tag example/fm_auth_service:{target} "
+        f"example/fm_auth_service@sha256:{'b' * 64}"
+    )
