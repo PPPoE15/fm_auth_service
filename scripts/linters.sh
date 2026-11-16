@@ -3,7 +3,7 @@
 set -eu
 
 echo "Running ruff.."
-ruff check --config=pyproject.toml src/
+ruff check --config=pyproject.toml src/ tests/
 
 echo "Running mypy..."
 mypy --config-file=pyproject.toml src/

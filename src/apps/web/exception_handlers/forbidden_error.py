@@ -1,9 +1,5 @@
-from fastapi import FastAPI, Request
-from fastapi.responses import JSONResponse
 from pydantic import Field
 from starlette import status
-
-from apps.web.app.utils.exceptions import BaseForbiddenError
 
 from . import base
 
@@ -42,17 +38,3 @@ class ForbiddenErrorResponseSchema(base.BaseErrorResponseSchema):
         examples=["FM-403000"],
         default="FM-403000",
     )
-
-
-def setup_forbidden_exception_handlers(app: FastAPI) -> None:
-    """
-    Настройка обработчиков ошибок доступа.
-
-    Args:
-        app: Приложение FastAPI.
-    """
-
-    @app.exception_handler(BaseForbiddenError)
-    async def forbidden_exception_handler(request: Request, exc: BaseForbiddenError) -> JSONResponse:
-        instance = request.url.path
-        return ForbiddenErrorResponseSchema(instance=instance, detail=exc.msg).json_response()

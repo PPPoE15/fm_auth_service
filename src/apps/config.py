@@ -17,13 +17,23 @@ class AppSettings(BaseSettings):
         description="Для проверки сборки.",
     )
 
+    # TODO(FM-16): нет нижней границы (ge=1): при 0 expires_in не проходит TokenSchema и /token отвечает 500,
+    # а при REFRESH_TOKEN_EXPIRE_DAYS <= 0 любой refresh сразу недействителен.
     ACCESS_TOKEN_EXPIRE_MINUTES: int = Field(
         30,
-        description="Время жизни токена.",
+        description="Время жизни access-токена в минутах.",
+    )
+    REFRESH_TOKEN_EXPIRE_DAYS: int = Field(
+        30,
+        description="Время жизни refresh-токена в днях.",
     )
     PRIVATE_KEY_PATH: str = Field(
-        ".ssh/id_rsa",
-        description="Расположение приватного ключа.",
+        f"{SECRETS_DIR}/jwt_private_key",
+        description="Расположение приватного ключа подписи JWT (PEM, не формат OpenSSH).",
+    )
+    PUBLIC_KEY_PATH: str = Field(
+        f"{SECRETS_DIR}/jwt_public_key",
+        description="Расположение публичного ключа для проверки подписи JWT (PEM, не формат OpenSSH).",
     )
     TOKEN_SIGNING_ALGORITHM: str = Field(
         "RS256",

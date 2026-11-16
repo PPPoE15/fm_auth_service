@@ -1,6 +1,6 @@
 run_linters: ## Запуск линтеров
-	ruff check src || echo
-	ruff format src --check || echo
+	ruff check src tests || echo
+	ruff format src tests --check || echo
 	mypy src || echo
 
 test_downgrade_migrations_compose:  ## Запуск проверки отката всех миграций через docker compose.
